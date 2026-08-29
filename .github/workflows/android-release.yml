@@ -1,5 +1,8 @@
 # Builds a signed release AAB on demand, ready to upload to Play Console.
 #
+# (Re-saved once to nudge GitHub's workflow registration after this file
+# didn't appear in the Actions tab following the repo's first push.)
+#
 # Deliberately workflow_dispatch-only, not triggered by push/tag: cutting a
 # release is a decision, not something that should happen automatically
 # because a commit landed. This job never talks to Play Console itself --
