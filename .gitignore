@@ -14,3 +14,4 @@ tools/play-console/*.json
 *service-account*.json
 __pycache__/
 *.pyc
+tools/play-console/.venv/
