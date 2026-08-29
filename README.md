@@ -40,3 +40,4 @@ Debug builds need no signing config. Release builds require
 
 - [`docs/google-play-steps.md`](docs/google-play-steps.md) — full publishing guide
 - [`docs/play-store-listing.md`](docs/play-store-listing.md) — Play Console listing copy
+- [`tools/play-console/README.md`](tools/play-console/README.md) — CLI for track/release/listing changes via the Play Developer API

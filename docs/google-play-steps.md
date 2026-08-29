@@ -194,3 +194,14 @@ Every subsequent release: bump `versionCode` (must strictly increase) and
 (`./gradlew bundleRelease -PapiBaseUrl=...`), upload the new AAB to a track,
 roll out. Consider a staged rollout percentage for production releases
 rather than 100% immediately.
+
+## 9. Automating the repeat work
+
+Steps 6-8 above (upload to a track, promote between tracks, adjust a staged
+rollout, edit store listing text) can be driven from the command line
+instead of the Play Console UI — see
+[`tools/play-console/README.md`](../tools/play-console/README.md). It talks
+to the same Google Play Developer API the console UI uses, via a service
+account you create and scope yourself; it does not change anything about
+the one-time setup in steps 1-5, which stays a manual, judgment-driven
+process.

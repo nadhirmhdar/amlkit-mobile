@@ -6,3 +6,11 @@ local.properties
 *.keystore
 *.p12
 app/release/
+
+# Play Console CLI service-account credentials -- never commit these
+# (see tools/play-console/README.md)
+tools/play-console/*.json
+*play-console*key*.json
+*service-account*.json
+__pycache__/
+*.pyc
