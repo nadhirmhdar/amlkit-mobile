@@ -1,4 +1,4 @@
-# Builds the native Android app in android/.
+# Builds the native Android app.
 #
 # This is also the ONLY place this app is actually compiled: the sandbox
 # that authored it has no Android SDK, and the proxy it runs behind blocks
@@ -12,18 +12,13 @@ name: Android
 on:
   push:
     branches: [master, main]
-    paths: ["android/**", ".github/workflows/android.yml"]
   pull_request:
-    paths: ["android/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 jobs:
   build:
     name: Assemble debug APK
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: android
     steps:
       - uses: actions/checkout@v5
 
@@ -49,5 +44,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: amlkit-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

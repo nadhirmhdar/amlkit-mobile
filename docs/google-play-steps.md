@@ -1,15 +1,15 @@
 # Publishing the amlkit Android app to Google Play
 
-The native app lives in `android/` (Kotlin + Jetpack Compose) and talks to
-amlkit's JSON API at `amlkit/api/mobile.py` (`/api/v1/*`). This doc is the
-path from a clean checkout to a release on the Play Store.
+This repo (Kotlin + Jetpack Compose) is the native client for
+[amlkit](https://github.com/nadhirmhdar/amlkit), and talks to its JSON API at
+`amlkit/api/mobile.py` (`/api/v1/*`) in that repo. This doc is the path from
+a clean checkout to a release on the Play Store.
 
 **Build verification note:** the app was authored in a sandbox with no
 Android SDK and no network access to `dl.google.com`, so it has never been
-compiled locally. `.github/workflows/android.yml` builds it on every push to
-`android/**` — check that workflow is green before doing anything below. If
-it's red, fix the build first; everything past this point assumes a green
-build.
+compiled locally. `.github/workflows/android.yml` builds it on every push —
+check that workflow is green before doing anything below. If it's red, fix
+the build first; everything past this point assumes a green build.
 
 ---
 
@@ -22,11 +22,11 @@ reachable from a phone, and it's cleartext HTTP (only allowed for that one
 emulator address — see `network_security_config.xml`). Before building for
 real devices or for release:
 
-1. Deploy amlkit somewhere with a real HTTPS URL (the repo already has a
-   Cloud Run path — see `.github/workflows/source-canary.yml`'s `deploy` job
-   and `scripts/deploy_gcp.ps1` — or any host that terminates TLS in front of
-   `scripts/serve.py`; see the README's binding/TLS warning, which applies
-   here just as much as to the web UI).
+1. Deploy amlkit somewhere with a real HTTPS URL (the [amlkit](https://github.com/nadhirmhdar/amlkit)
+   repo already has a Cloud Run path — see its `.github/workflows/source-canary.yml`'s
+   `deploy` job and `scripts/deploy_gcp.ps1` — or any host that terminates
+   TLS in front of `scripts/serve.py`; see that repo's README binding/TLS
+   warning, which applies here just as much as to the web UI).
 2. Build with that URL:
    ```bash
    ./gradlew assembleRelease -PapiBaseUrl=https://your-deployment.example.com/
@@ -38,7 +38,7 @@ real devices or for release:
 
 ## 2. Application ID
 
-`android/app/build.gradle.kts` sets:
+`app/build.gradle.kts` sets:
 ```kotlin
 applicationId = "com.grovisoramlkit.myapp"
 ```
@@ -52,8 +52,8 @@ need to match.
 
 ## 3. Upload keystore
 
-`android/app/build.gradle.kts` already wires a `release` signing config that
-reads its values from `android/local.properties` (gitignored, never
+`app/build.gradle.kts` already wires a `release` signing config that
+reads its values from `local.properties` (gitignored, never
 committed) — `bundleRelease`/`assembleRelease` are unsigned and fail loudly
 until that file exists.
 
@@ -69,7 +69,7 @@ will ignore a separately-specified `-keypass`, that's expected.)
 
 Either way, store the `.p12`/`.jks` file and its password somewhere durable
 and private — a password manager or secrets vault, never the repo — and
-create `android/local.properties`:
+create `local.properties`:
 ```properties
 RELEASE_STORE_FILE=/absolute/path/to/amlkit-upload.p12
 RELEASE_STORE_PASSWORD=...
@@ -86,10 +86,9 @@ process for Play App Signing is the way back in, not a dead end.)
 
 Play requires an Android App Bundle, not an APK:
 ```bash
-cd android
 ./gradlew bundleRelease -PapiBaseUrl=https://your-deployment.example.com/
 ```
-Output: `android/app/build/outputs/bundle/release/app-release.aab`.
+Output: `app/build/outputs/bundle/release/app-release.aab`.
 
 ### Automated release builds
 
@@ -113,7 +112,7 @@ stays a human action):
 | `ANDROID_KEY_PASSWORD` | same as `ANDROID_KEYSTORE_PASSWORD` for a PKCS12 keystore (see §3 — PKCS12 uses one password for both) |
 
 The workflow decodes the keystore into the runner's ephemeral temp
-directory and writes it into `android/local.properties` for the duration of
+directory and writes it into `local.properties` for the duration of
 that one job only — nothing is persisted or logged. The resulting `.aab` is
 attached to the workflow run as a downloadable artifact; uploading it to
 Play Console (§6–7 below) is still a manual step, deliberately: publishing
@@ -191,7 +190,7 @@ from step 5 are what reviewers check against.
 ## 8. Shipping updates
 
 Every subsequent release: bump `versionCode` (must strictly increase) and
-`versionName` in `android/app/build.gradle.kts`, rebuild
+`versionName` in `app/build.gradle.kts`, rebuild
 (`./gradlew bundleRelease -PapiBaseUrl=...`), upload the new AAB to a track,
 roll out. Consider a staged rollout percentage for production releases
 rather than 100% immediately.

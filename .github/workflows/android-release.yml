@@ -37,9 +37,6 @@ jobs:
   bundle-release:
     name: Build signed release AAB
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: android
     steps:
       - uses: actions/checkout@v5
 
@@ -62,7 +59,7 @@ jobs:
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/amlkit-upload.p12"
 
-      # Same android/local.properties contract build.gradle.kts's release
+      # Same local.properties contract build.gradle.kts's release
       # signingConfig already reads for a local build -- this file lives
       # only in the ephemeral runner workspace, never committed, never
       # printed to the job log.
@@ -90,5 +87,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: amlkit-release-${{ inputs.versionName }}
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error

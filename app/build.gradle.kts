@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Release signing, read from android/local.properties (gitignored -- see
+// Release signing, read from local.properties (gitignored -- see
 // docs/google-play-steps.md). Absent entirely in CI, which only runs
 // assembleDebug/lintDebug and never touches this; a local `bundleRelease`
 // without it fails with FileNotFoundException on a null storeFile rather

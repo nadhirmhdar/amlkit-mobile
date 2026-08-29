@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "amlkit"
+rootProject.name = "amlkit-mobile"
 include(":app")
