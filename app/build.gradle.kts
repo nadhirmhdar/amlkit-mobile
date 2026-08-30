@@ -66,6 +66,13 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
+            // Packages native debug symbols (from transitively bundled native
+            // libs -- Compose's Skia, SQLite, etc; this app has no native code
+            // of its own) into the AAB so Play Console can symbolicate native
+            // crashes/ANRs instead of showing raw addresses.
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
         debug {
             isMinifyEnabled = false
