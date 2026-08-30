@@ -29,13 +29,13 @@ android {
         applicationId = "com.grovisoramlkit.myapp"
         minSdk = 26
         targetSdk = 35
-        // Overridable at build time: -PversionCode=2 -PversionName=1.0.1
+        // Overridable at build time: -PversionCode=3 -PversionName=1.0.2
         // (used by .github/workflows/android-release.yml, which dispatches
         // a real value per release; Play requires versionCode to strictly
         // increase between uploads, so the default here is only ever
         // correct for the very first release).
-        versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
-        versionName = (project.findProperty("versionName") as String?) ?: "1.0.0"
+        versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 3
+        versionName = (project.findProperty("versionName") as String?) ?: "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -66,6 +66,13 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
+            // Packages native debug symbols (from transitively bundled native
+            // libs -- Compose's Skia, SQLite, etc; this app has no native code
+            // of its own) into the AAB so Play Console can symbolicate native
+            // crashes/ANRs instead of showing raw addresses.
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
         debug {
             isMinifyEnabled = false
