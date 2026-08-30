@@ -29,13 +29,13 @@ android {
         applicationId = "com.grovisoramlkit.myapp"
         minSdk = 26
         targetSdk = 35
-        // Overridable at build time: -PversionCode=3 -PversionName=1.0.2
+        // Overridable at build time: -PversionCode=4 -PversionName=1.0.3
         // (used by .github/workflows/android-release.yml, which dispatches
         // a real value per release; Play requires versionCode to strictly
         // increase between uploads, so the default here is only ever
         // correct for the very first release).
-        versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 3
-        versionName = (project.findProperty("versionName") as String?) ?: "1.0.2"
+        versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 4
+        versionName = (project.findProperty("versionName") as String?) ?: "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
