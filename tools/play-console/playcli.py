@@ -14,14 +14,21 @@ leaves a half-applied edit sitting in Play Console.
 Setup:
   1. In Play Console, go to Setup -> API access and link (or create) a
      Google Cloud project.
-  2. In that project, create a service account and download a JSON key.
+  2. In that project, create a service account -- see
+     tools/play-console/README.md for two ways to authenticate as it:
+     a Workload Identity Federation setup with no downloadable key at all
+     (recommended, used by .github/workflows/play-console-publish.yml), or
+     a JSON key file for local use.
   3. Back in Play Console -> Users and permissions, invite the service
      account's email and grant it exactly the permissions this tool needs
      (e.g. "Release to testing tracks" and/or "Release to production" --
      grant production access only if you actually intend to use it here).
-  4. Point this CLI at the key with --credentials or
-     PLAY_CONSOLE_CREDENTIALS_FILE. Never commit the key file -- see
-     tools/play-console/README.md.
+  4. Either point this CLI at a downloaded key with --credentials /
+     PLAY_CONSOLE_CREDENTIALS_FILE (never commit that file -- see
+     tools/play-console/README.md), or omit both and let it fall back to
+     Application Default Credentials -- what a Workload Identity Federation
+     login (`google-github-actions/auth@v2` in CI) or a local
+     `gcloud auth application-default login` both set up.
 
 Every subcommand is scoped to one package; it defaults to this repo's
 locked-in applicationId (com.grovisoramlkit.myapp -- see
@@ -46,8 +53,9 @@ def _die(message: str) -> "None":
     raise SystemExit(1)
 
 
-def build_service(credentials_path: str):
+def build_service(credentials_path: Optional[str]):
     try:
+        import google.auth
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
     except ImportError:
@@ -55,14 +63,25 @@ def build_service(credentials_path: str):
             "missing dependencies -- run: pip install -r "
             "tools/play-console/requirements.txt"
         )
-    if not os.path.isfile(credentials_path):
-        _die(
-            f"credentials file not found: {credentials_path} "
-            "(pass --credentials or set PLAY_CONSOLE_CREDENTIALS_FILE)"
+    if credentials_path:
+        if not os.path.isfile(credentials_path):
+            _die(f"credentials file not found: {credentials_path}")
+        creds = service_account.Credentials.from_service_account_file(
+            credentials_path, scopes=SCOPES
         )
-    creds = service_account.Credentials.from_service_account_file(
-        credentials_path, scopes=SCOPES
-    )
+    else:
+        # Application Default Credentials: what a Workload Identity
+        # Federation login (google-github-actions/auth@v2) or a local
+        # `gcloud auth application-default login` both set up -- no
+        # downloadable key involved either way.
+        try:
+            creds, _ = google.auth.default(scopes=SCOPES)
+        except google.auth.exceptions.DefaultCredentialsError as exc:
+            _die(
+                f"no credentials found ({exc}) -- pass --credentials PATH, "
+                "set PLAY_CONSOLE_CREDENTIALS_FILE, or run "
+                "`gcloud auth application-default login`"
+            )
     return build("androidpublisher", "v3", credentials=creds, cache_discovery=False)
 
 
@@ -405,7 +424,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--credentials",
         default=os.environ.get("PLAY_CONSOLE_CREDENTIALS_FILE"),
         help="Path to a Play Console service-account JSON key "
-        "(default: $PLAY_CONSOLE_CREDENTIALS_FILE)",
+        "(default: $PLAY_CONSOLE_CREDENTIALS_FILE). Omit to use Application "
+        "Default Credentials instead -- what a Workload Identity Federation "
+        "login or `gcloud auth application-default login` both set up.",
     )
     parser.add_argument(
         "--package-name",
@@ -527,12 +548,6 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-
-    if not args.credentials:
-        _die(
-            "no credentials -- pass --credentials PATH or set "
-            "PLAY_CONSOLE_CREDENTIALS_FILE"
-        )
 
     service = build_service(args.credentials)
 

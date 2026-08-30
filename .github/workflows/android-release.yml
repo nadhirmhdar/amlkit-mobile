@@ -6,9 +6,10 @@
 # Deliberately workflow_dispatch-only, not triggered by push/tag: cutting a
 # release is a decision, not something that should happen automatically
 # because a commit landed. This job never talks to Play Console itself --
-# see docs/google-play-steps.md for the upload step, which stays manual
-# (and could be automated later with a Play publish action + a service
-# account, a separate, larger trust decision from just building the AAB).
+# see docs/google-play-steps.md for the manual upload path, or
+# play-console-publish.yml for the on-demand build-and-publish workflow
+# (Workload Identity Federation, no service-account key) if you want to skip
+# the manual upload step.
 #
 # Requires four repository secrets this workflow cannot set for itself --
 # see docs/google-play-steps.md "Automated release builds" for exactly what

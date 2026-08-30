@@ -205,3 +205,11 @@ to the same Google Play Developer API the console UI uses, via a service
 account you create and scope yourself; it does not change anything about
 the one-time setup in steps 1-5, which stays a manual, judgment-driven
 process.
+
+The upload step itself can also run entirely in CI, on demand: *Actions →
+Publish to Play Console → Run workflow*, picking the track and filling in
+the same build inputs as step 4's release-build workflow. It builds the AAB
+and publishes it in one job, authenticating via Workload Identity Federation
+rather than a stored key — see `tools/play-console/README.md`'s "Option A"
+and `scripts/setup_github_play_auth.sh` for the one-time setup this depends
+on.
