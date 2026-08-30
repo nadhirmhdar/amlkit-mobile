@@ -188,6 +188,8 @@ def cmd_upload(args, service) -> None:
     if args.status == "inProgress" and args.user_fraction is None:
         _die("--user-fraction is required when --status inProgress")
 
+    from googleapiclient.http import MediaFileUpload
+
     with edit_session(service, args.package_name) as edit_id:
         bundle = (
             service.edits()
@@ -195,7 +197,12 @@ def cmd_upload(args, service) -> None:
             .upload(
                 packageName=args.package_name,
                 editId=edit_id,
-                media_body=args.bundle_path,
+                # Explicit mimetype: MediaFileUpload/mimetypes.guess_type
+                # doesn't know the .aab extension and raises UnknownFileType
+                # if left to auto-detect from the path string.
+                media_body=MediaFileUpload(
+                    args.bundle_path, mimetype="application/octet-stream", resumable=True
+                ),
             )
             .execute()
         )
