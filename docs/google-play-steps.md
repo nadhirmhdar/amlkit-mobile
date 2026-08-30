@@ -194,3 +194,22 @@ Every subsequent release: bump `versionCode` (must strictly increase) and
 (`./gradlew bundleRelease -PapiBaseUrl=...`), upload the new AAB to a track,
 roll out. Consider a staged rollout percentage for production releases
 rather than 100% immediately.
+
+## 9. Automating the repeat work
+
+Steps 6-8 above (upload to a track, promote between tracks, adjust a staged
+rollout, edit store listing text) can be driven from the command line
+instead of the Play Console UI — see
+[`tools/play-console/README.md`](../tools/play-console/README.md). It talks
+to the same Google Play Developer API the console UI uses, via a service
+account you create and scope yourself; it does not change anything about
+the one-time setup in steps 1-5, which stays a manual, judgment-driven
+process.
+
+The upload step itself can also run entirely in CI, on demand: *Actions →
+Publish to Play Console → Run workflow*, picking the track and filling in
+the same build inputs as step 4's release-build workflow. It builds the AAB
+and publishes it in one job, authenticating via Workload Identity Federation
+rather than a stored key — see `tools/play-console/README.md`'s "Option A"
+and `scripts/setup_github_play_auth.sh` for the one-time setup this depends
+on.
