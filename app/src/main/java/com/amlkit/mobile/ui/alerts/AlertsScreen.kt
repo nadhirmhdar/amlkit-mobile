@@ -1,12 +1,11 @@
 package com.amlkit.mobile.ui.alerts
 
-import androidx.compose.foundation.BorderStroke
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +23,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +38,7 @@ import androidx.lifecycle.viewModelScope
 import com.amlkit.mobile.data.AmlkitRepository
 import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.AlertDto
+import com.amlkit.mobile.data.dto.ReviewDto
 import com.amlkit.mobile.ui.common.CategoryTag
 import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.FullScreenLoading
@@ -47,20 +46,26 @@ import com.amlkit.mobile.ui.common.HairlineDivider
 import com.amlkit.mobile.ui.common.PillButton
 import com.amlkit.mobile.ui.common.PillButtonTone
 import com.amlkit.mobile.ui.common.PillButtonWeighted
+import com.amlkit.mobile.ui.common.SectionCard
+import com.amlkit.mobile.ui.common.StatusPill
+import com.amlkit.mobile.ui.common.TextLink
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.Resource
 import com.amlkit.mobile.ui.common.ScreenEyebrow
+import com.amlkit.mobile.ui.common.alertStatusTone
 import com.amlkit.mobile.ui.common.categoryTone
 import com.amlkit.mobile.ui.common.screenContentPadding
+import com.amlkit.mobile.ui.nav.AmlkitSubHeader
 import com.amlkit.mobile.ui.theme.AmlInk
 import com.amlkit.mobile.ui.theme.AmlInk2
 import com.amlkit.mobile.ui.theme.AmlInk3
-import com.amlkit.mobile.ui.theme.AmlLine
 import com.amlkit.mobile.ui.theme.AmlSurface
 import com.amlkit.mobile.ui.theme.AmlkitMonoStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
 
 data class AlertsUiState(
     val status: String = "open",
@@ -135,106 +140,43 @@ class AlertsViewModel(private val repository: AmlkitRepository) : ViewModel() {
 }
 
 @Composable
-fun AlertsScreen(repository: AmlkitRepository) {
+fun AlertsScreen(repository: AmlkitRepository, onBack: () -> Unit) {
     val viewModel = amlkitViewModel(repository) { AlertsViewModel(it) }
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
-    var dispositionTarget by remember { mutableStateOf<AlertDto?>(null) }
-    var confirmTarget by remember { mutableStateOf<AlertDto?>(null) }
+    var selectedAlert by remember { mutableStateOf<AlertDto?>(null) }
     var assignTarget by remember { mutableStateOf<AlertDto?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    ScreenEyebrow(text = "Queue")
-                    Text(text = "Alerts", style = MaterialTheme.typography.displaySmall, color = AmlInk, modifier = Modifier.padding(top = 2.dp))
-                }
-                val openCount = (state.alerts as? Resource.Content)?.data?.size ?: 0
-                Text(
-                    text = "$openCount open",
-                    style = AmlkitMonoStyle,
-                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
-                    color = AmlInk3,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-            }
-            Row(modifier = Modifier.padding(top = 16.dp).horizontalScroll(rememberScrollState())) {
-                listOf(
-                    "open" to "Open",
-                    "pending_review" to "Pending review",
-                    "escalated" to "Escalated",
-                    "false_positive" to "Cleared",
-                    "all" to "All",
-                ).forEach { (value, label) ->
-                    StatusTab(label = label, selected = state.status == value, onClick = { viewModel.setStatus(value) })
-                }
-            }
-            HairlineDivider()
-        }
+    BackHandler(enabled = selectedAlert != null) { selectedAlert = null }
 
-        if (state.actionMessage != null) {
-            Text(
-                text = state.actionMessage!!,
-                color = com.amlkit.mobile.ui.theme.AmlGood,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+    Column(modifier = Modifier.fillMaxSize()) {
+        val current = selectedAlert
+        if (current == null) {
+            AmlkitSubHeader(label = "Home", onBack = onBack)
+            AlertsQueue(
+                state = state,
+                onSelectStatus = viewModel::setStatus,
+                onOpenAlert = { alert -> selectedAlert = alert },
+                onAssign = { alert -> assignTarget = alert },
+            )
+        } else {
+            AmlkitSubHeader(label = "Alerts", onBack = { selectedAlert = null })
+            AlertDetail(
+                alert = current,
+                reasonCodes = state.reasonCodes,
+                onDisposition = { status, reasonCode, narrative ->
+                    viewModel.disposition(current.id, status, reasonCode, narrative)
+                    selectedAlert = null
+                },
+                onConfirm = { agree, narrative ->
+                    viewModel.confirm(current.id, agree, narrative)
+                    selectedAlert = null
+                },
             )
         }
-        if (state.actionError != null) {
-            ErrorBanner(message = state.actionError!!)
-        }
-
-        when (val resource = state.alerts) {
-            is Resource.Loading -> FullScreenLoading(modifier = Modifier.fillMaxSize())
-            is Resource.Error -> ErrorBanner(message = resource.message, modifier = Modifier.fillMaxSize())
-            is Resource.Content -> {
-                if (resource.data.isEmpty()) {
-                    Text(
-                        text = "No alerts in this view.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AmlInk3,
-                        modifier = Modifier.padding(20.dp),
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = screenContentPadding,
-                    ) {
-                        items(resource.data, key = { it.id }) { alert ->
-                            AlertRow(
-                                alert = alert,
-                                onDisposition = { dispositionTarget = alert },
-                                onConfirm = { confirmTarget = alert },
-                                onAssign = { assignTarget = alert },
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 
-    dispositionTarget?.let { alert ->
-        DispositionDialog(
-            reasonCodes = state.reasonCodes,
-            onDismiss = { dispositionTarget = null },
-            onConfirm = { status, code, narrative ->
-                viewModel.disposition(alert.id, status, code, narrative)
-                dispositionTarget = null
-            },
-        )
-    }
-    confirmTarget?.let { alert ->
-        ConfirmReviewDialog(
-            onDismiss = { confirmTarget = null },
-            onConfirm = { agree, narrative ->
-                viewModel.confirm(alert.id, agree, narrative)
-                confirmTarget = null
-            },
-        )
-    }
     assignTarget?.let { alert ->
         AssignDialog(
             initial = alert.assigned_to ?: "",
@@ -244,6 +186,83 @@ fun AlertsScreen(repository: AmlkitRepository) {
                 assignTarget = null
             },
         )
+    }
+}
+
+@Composable
+private fun AlertsQueue(
+    state: AlertsUiState,
+    onSelectStatus: (String) -> Unit,
+    onOpenAlert: (AlertDto) -> Unit,
+    onAssign: (AlertDto) -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                ScreenEyebrow(text = "Queue")
+                Text(text = "Alerts", style = MaterialTheme.typography.displaySmall, color = AmlInk, modifier = Modifier.padding(top = 2.dp))
+            }
+            val openCount = (state.alerts as? Resource.Content)?.data?.size ?: 0
+            Text(
+                text = "$openCount open",
+                style = AmlkitMonoStyle,
+                fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                color = AmlInk3,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+        Row(modifier = Modifier.padding(top = 16.dp).horizontalScroll(rememberScrollState())) {
+            listOf(
+                "open" to "Open",
+                "pending_review" to "Pending review",
+                "escalated" to "Escalated",
+                "false_positive" to "Cleared",
+                "all" to "All",
+            ).forEach { (value, label) ->
+                StatusTab(label = label, selected = state.status == value, onClick = { onSelectStatus(value) })
+            }
+        }
+        HairlineDivider()
+    }
+
+    if (state.actionMessage != null) {
+        Text(
+            text = state.actionMessage,
+            color = com.amlkit.mobile.ui.theme.AmlGood,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+        )
+    }
+    if (state.actionError != null) {
+        ErrorBanner(message = state.actionError)
+    }
+
+    when (val resource = state.alerts) {
+        is Resource.Loading -> FullScreenLoading(modifier = Modifier.fillMaxSize())
+        is Resource.Error -> ErrorBanner(message = resource.message, modifier = Modifier.fillMaxSize())
+        is Resource.Content -> {
+            if (resource.data.isEmpty()) {
+                Text(
+                    text = "No alerts in this view.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AmlInk3,
+                    modifier = Modifier.padding(20.dp),
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = screenContentPadding,
+                ) {
+                    items(resource.data, key = { it.id }) { alert ->
+                        AlertRow(
+                            alert = alert,
+                            onOpen = { onOpenAlert(alert) },
+                            onAssign = { onAssign(alert) },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -270,13 +289,8 @@ private fun StatusTab(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun AlertRow(
-    alert: AlertDto,
-    onDisposition: () -> Unit,
-    onConfirm: () -> Unit,
-    onAssign: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+private fun AlertRow(alert: AlertDto, onOpen: () -> Unit, onAssign: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 16.dp)) {
         CategoryTag(text = alert.category, tone = categoryTone(alert.category), trailing = "%.2f".format(alert.score))
         Text(
             text = alert.matched_party ?: alert.caption,
@@ -298,111 +312,214 @@ private fun AlertRow(
             modifier = Modifier.padding(top = 2.dp),
         )
         Row(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PillButtonWeighted(text = "Assign", onClick = onAssign, tone = PillButtonTone.SECONDARY)
-            when (alert.status) {
-                "pending_review" -> PillButtonWeighted(text = "Confirm review", onClick = onConfirm)
-                "open" -> PillButtonWeighted(text = "Disposition", onClick = onDisposition)
-            }
+            PillButtonWeighted(
+                text = "Assign",
+                onClick = onAssign,
+                tone = PillButtonTone.SECONDARY,
+            )
+            PillButtonWeighted(
+                text = if (alert.status == "pending_review") "Confirm review" else "View",
+                onClick = onOpen,
+            )
         }
     }
     HairlineDivider(soft = true)
 }
 
-@Composable
-private fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
-    Box(
-        modifier = Modifier
-            .clip(shape)
-            .background(if (selected) AmlInk else androidx.compose.ui.graphics.Color.Transparent, shape)
-            .then(if (!selected) Modifier.border(BorderStroke(1.dp, AmlLine), shape) else Modifier)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (selected) androidx.compose.ui.graphics.Color.White else AmlInk2,
-        )
+private fun daysAgo(iso: String?): Int? {
+    if (iso == null) return null
+    return try {
+        Duration.between(Instant.parse(iso), Instant.now()).toDays().toInt().coerceAtLeast(0)
+    } catch (e: Exception) {
+        null
     }
 }
 
 @Composable
-private fun DispositionDialog(
-    reasonCodes: Map<String, String>,
-    onDismiss: () -> Unit,
-    onConfirm: (status: String, reasonCode: String, narrative: String) -> Unit,
-) {
-    var status by remember { mutableStateOf("false_positive") }
-    var reasonCode by remember { mutableStateOf(reasonCodes.keys.firstOrNull() ?: "") }
-    var reasonMenuOpen by remember { mutableStateOf(false) }
-    var narrative by remember { mutableStateOf("") }
+private fun StatItem(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(text = label.uppercase(), style = MaterialTheme.typography.labelMedium, color = AmlInk3)
+        Text(text = value, style = MaterialTheme.typography.titleLarge, color = AmlInk, modifier = Modifier.padding(top = 4.dp))
+    }
+}
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = AmlSurface,
-        shape = com.amlkit.mobile.ui.common.AmlDialogShape,
-        title = { Text("Disposition alert", color = AmlInk, style = MaterialTheme.typography.titleLarge) },
-        text = {
-            Column {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("false_positive", "true_positive", "escalated").forEach { option ->
-                        ChoiceChip(text = option.replace("_", " "), selected = status == option, onClick = { status = option })
+/** The full "Alert · disposition" page from the mockup -- replaces the old
+ * compact AlertDialog with a real page: stats, obligation, the evidence
+ * behind the match, a case note, and status-appropriate actions at the
+ * bottom (open alerts get dismiss/confirm/escalate; alerts already sent for
+ * independent review get agree/override; anything already closed is shown
+ * read-only with its disposition history). */
+@Composable
+private fun AlertDetail(
+    alert: AlertDto,
+    reasonCodes: Map<String, String>,
+    onDisposition: (status: String, reasonCode: String, narrative: String) -> Unit,
+    onConfirm: (agree: Boolean, narrative: String) -> Unit,
+) {
+    var narrative by remember(alert.id) { mutableStateOf("") }
+    var reasonCode by remember(alert.id) { mutableStateOf(reasonCodes.keys.firstOrNull() ?: "") }
+    var reasonMenuOpen by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+    ) {
+        ScreenEyebrow(text = "Alert · disposition")
+        CategoryTag(
+            text = alert.category,
+            tone = categoryTone(alert.category),
+            modifier = Modifier.padding(top = 10.dp),
+        )
+        Text(
+            text = alert.matched_party ?: alert.caption,
+            style = MaterialTheme.typography.displaySmall,
+            color = AmlInk,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        val meta = alert.customer_name ?: alert.dataset_title ?: alert.dataset
+        if (meta != null) {
+            Text(text = meta, style = MaterialTheme.typography.bodyMedium, color = AmlInk3, modifier = Modifier.padding(top = 3.dp))
+        }
+        StatusPill(text = alert.status.replace("_", " "), tone = alertStatusTone(alert.status), modifier = Modifier.padding(top = 10.dp))
+
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
+            StatItem(label = "Score", value = "%.2f".format(alert.score), modifier = Modifier.weight(1f))
+            val raised = daysAgo(alert.created_at)
+            StatItem(label = "Raised", value = if (raised == null) "—" else if (raised == 0) "Today" else "${raised}d ago", modifier = Modifier.weight(1f))
+            StatItem(label = "Assigned", value = alert.assigned_to ?: "Unassigned", modifier = Modifier.weight(1f))
+        }
+
+        if (alert.obligation != null) {
+            SectionCard(title = "Obligation", modifier = Modifier.padding(top = 20.dp)) {
+                Text(text = alert.obligation, style = MaterialTheme.typography.bodyMedium, color = AmlInk2)
+            }
+        }
+
+        SectionCard(title = "Why this matched", modifier = Modifier.padding(top = 16.dp)) {
+            EvidenceRow(label = "List", value = alert.dataset_title ?: alert.dataset ?: "—")
+            if (alert.aliases.isNotEmpty()) {
+                EvidenceRow(label = "Aliases", value = alert.aliases.joinToString(", ") { it.name })
+            }
+            if (alert.topics.isNotEmpty()) {
+                EvidenceRow(label = "Topics", value = alert.topics.joinToString(", "))
+            }
+            if (alert.programs.isNotEmpty()) {
+                EvidenceRow(label = "Programs", value = alert.programs.joinToString(", "))
+            }
+            if (alert.countries.isNotEmpty()) {
+                EvidenceRow(label = "Countries", value = alert.countries.joinToString(", "))
+            }
+            if (alert.via_ubo) {
+                EvidenceRow(label = "Via UBO", value = alert.ubo_name ?: "Beneficial owner")
+            }
+        }
+
+        when (alert.status) {
+            "open" -> {
+                SectionCard(title = "Case note", modifier = Modifier.padding(top = 16.dp)) {
+                    Box(modifier = Modifier.padding(top = 2.dp).clickable { reasonMenuOpen = true }) {
+                        Text(
+                            text = "Reason: ${reasonCodes[reasonCode] ?: reasonCode.ifBlank { "Select a reason" }}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AmlInk2,
+                        )
                     }
+                    DropdownMenu(expanded = reasonMenuOpen, onDismissRequest = { reasonMenuOpen = false }) {
+                        reasonCodes.forEach { (code, label) ->
+                            DropdownMenuItem(text = { Text(label) }, onClick = { reasonCode = code; reasonMenuOpen = false })
+                        }
+                    }
+                    OutlinedTextField(
+                        value = narrative,
+                        onValueChange = { narrative = it },
+                        label = { Text("Narrative (required for true positive / escalated)") },
+                        colors = com.amlkit.mobile.ui.common.amlDialogFieldColors(),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                Box(modifier = Modifier.padding(top = 14.dp).clickable { reasonMenuOpen = true }) {
+                Row(modifier = Modifier.fillMaxWidth().padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PillButtonWeighted(
+                        text = "Dismiss",
+                        tone = PillButtonTone.SECONDARY,
+                        onClick = { onDisposition("false_positive", reasonCode, narrative) },
+                    )
+                    PillButtonWeighted(
+                        text = "Confirm match",
+                        tone = PillButtonTone.DANGER,
+                        onClick = { onDisposition("true_positive", reasonCode, narrative) },
+                    )
+                }
+                TextLink(
+                    text = "Escalate to MLRO instead",
+                    onClick = { onDisposition("escalated", reasonCode, narrative) },
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+            "pending_review" -> {
+                SectionCard(title = "Independent review", modifier = Modifier.padding(top = 16.dp)) {
                     Text(
-                        text = "Reason: ${reasonCodes[reasonCode] ?: reasonCode}",
+                        text = "Confirming requires a different operator than the one who proposed the disposition.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = AmlInk2,
                     )
+                    OutlinedTextField(
+                        value = narrative,
+                        onValueChange = { narrative = it },
+                        label = { Text("Narrative (optional)") },
+                        colors = com.amlkit.mobile.ui.common.amlDialogFieldColors(),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                DropdownMenu(expanded = reasonMenuOpen, onDismissRequest = { reasonMenuOpen = false }) {
-                    reasonCodes.forEach { (code, label) ->
-                        DropdownMenuItem(text = { Text(label) }, onClick = { reasonCode = code; reasonMenuOpen = false })
+                Row(modifier = Modifier.fillMaxWidth().padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PillButtonWeighted(text = "Agree & confirm", onClick = { onConfirm(true, narrative) })
+                    PillButtonWeighted(text = "Override & escalate", tone = PillButtonTone.DANGER, onClick = { onConfirm(false, narrative) })
+                }
+            }
+            else -> {
+                SectionCard(title = "Disposition history", modifier = Modifier.padding(top = 16.dp)) {
+                    if (alert.dispositioned_by != null) {
+                        EvidenceRow(label = "Dispositioned by", value = alert.dispositioned_by)
+                    }
+                    if (alert.dispositioned_at != null) {
+                        EvidenceRow(label = "At", value = alert.dispositioned_at)
+                    }
+                    if (alert.reviews.isEmpty()) {
+                        Text(text = "No independent review recorded yet.", style = MaterialTheme.typography.bodyMedium, color = AmlInk3)
+                    } else {
+                        alert.reviews.forEach { review -> ReviewRow(review) }
                     }
                 }
-                OutlinedTextField(
-                    value = narrative, onValueChange = { narrative = it },
-                    label = { Text("Narrative (required for true positive / escalated)") },
-                    colors = com.amlkit.mobile.ui.common.amlDialogFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.padding(top = 14.dp).fillMaxWidth(),
-                )
             }
-        },
-        confirmButton = { PillButton(text = "Submit", onClick = { onConfirm(status, reasonCode, narrative) }, height = 44.dp) },
-        dismissButton = { PillButton(text = "Cancel", onClick = onDismiss, tone = PillButtonTone.SECONDARY, height = 44.dp) },
-    )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
 }
 
 @Composable
-private fun ConfirmReviewDialog(onDismiss: () -> Unit, onConfirm: (agree: Boolean, narrative: String) -> Unit) {
-    var narrative by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = AmlSurface,
-        shape = com.amlkit.mobile.ui.common.AmlDialogShape,
-        title = { Text("Independent review", color = AmlInk, style = MaterialTheme.typography.titleLarge) },
-        text = {
-            Column {
-                Text(
-                    "Confirming requires a different operator than the one who proposed the disposition.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = AmlInk2,
-                )
-                OutlinedTextField(
-                    value = narrative, onValueChange = { narrative = it },
-                    label = { Text("Narrative (optional)") },
-                    colors = com.amlkit.mobile.ui.common.amlDialogFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.padding(top = 14.dp).fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = { PillButton(text = "Agree & confirm", onClick = { onConfirm(true, narrative) }, height = 44.dp) },
-        dismissButton = { PillButton(text = "Override & escalate", onClick = { onConfirm(false, narrative) }, tone = PillButtonTone.DANGER, height = 44.dp) },
-    )
+private fun EvidenceRow(label: String, value: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(text = label.uppercase(), style = MaterialTheme.typography.labelMedium, color = AmlInk3)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, color = AmlInk2, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+@Composable
+private fun ReviewRow(review: ReviewDto) {
+    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+        Text(
+            text = "${review.operator} · ${review.action}${review.reason_label?.let { " ($it)" } ?: ""}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = AmlInk,
+        )
+        if (!review.narrative.isNullOrBlank()) {
+            Text(text = review.narrative, style = MaterialTheme.typography.bodySmall, color = AmlInk3, modifier = Modifier.padding(top = 2.dp))
+        }
+    }
 }
 
 @Composable

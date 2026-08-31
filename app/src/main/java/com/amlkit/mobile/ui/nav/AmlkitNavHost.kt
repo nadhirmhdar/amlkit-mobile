@@ -37,7 +37,6 @@ private val screenTitles = mapOf(
     Routes.CUSTOMER_NEW to "Customers",
     Routes.CUSTOMER_DETAIL to "Customers",
     "customers/{customerId}/evidence" to "Case file",
-    Routes.ALERTS to "Home",
     Routes.AUDIT to "More",
     Routes.ADMIN to "More",
     Routes.REPORTS to "More",
@@ -65,11 +64,15 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
 
     val isTopLevel = currentRoute in bottomTabRoutes
     val isAuthRoute = currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER
+    // Alerts renders its own header (queue vs. detail need different back
+    // targets within the same route), so the shared Scaffold header is
+    // suppressed for it rather than doubling up.
+    val hasOwnHeader = currentRoute == Routes.ALERTS
 
     Scaffold(
         containerColor = com.amlkit.mobile.ui.theme.AmlBg,
         topBar = {
-            if (!isAuthRoute && !isTopLevel) {
+            if (!isAuthRoute && !isTopLevel && !hasOwnHeader) {
                 val label = screenTitles[currentRoute] ?: ""
                 AmlkitSubHeader(label = label, onBack = { navController.popBackStack() })
             }
@@ -154,7 +157,9 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
                 val customerId = entry.arguments?.getInt("customerId") ?: return@composable
                 EvidenceScreen(repository = repository, customerId = customerId)
             }
-            composable(Routes.ALERTS) { AlertsScreen(repository = repository) }
+            composable(Routes.ALERTS) {
+                AlertsScreen(repository = repository, onBack = { navController.popBackStack() })
+            }
             composable(Routes.AUDIT) { AuditScreen(repository = repository) }
             composable(Routes.ADMIN) { AdminScreen(repository = repository) }
             composable(Routes.REPORTS) {
