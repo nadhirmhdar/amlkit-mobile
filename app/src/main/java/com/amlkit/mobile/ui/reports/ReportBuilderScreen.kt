@@ -32,6 +32,8 @@ import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.CustomerListItemDto
 import com.amlkit.mobile.data.dto.ReportSaveRequest
 import com.amlkit.mobile.ui.common.ErrorBanner
+import com.amlkit.mobile.ui.common.PillButton
+import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.screenContentPadding
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,7 +111,7 @@ fun ReportBuilderScreen(repository: AmlkitRepository, onSaved: (Int) -> Unit) {
         contentPadding = screenContentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text(text = "New STR/SAR report", style = MaterialTheme.typography.headlineSmall) }
+        item { ScreenTitle(text = "New STR/SAR report") }
         if (state.error != null) item { ErrorBanner(message = state.error!!) }
 
         item {
@@ -181,9 +183,7 @@ fun ReportBuilderScreen(repository: AmlkitRepository, onSaved: (Int) -> Unit) {
         }
 
         item {
-            Button(onClick = { viewModel.save(onSaved) }, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) {
-                if (state.loading) CircularProgressIndicator(modifier = Modifier.size(20.dp)) else Text("Save draft")
-            }
+            PillButton(text = "Save draft", onClick = { viewModel.save(onSaved) }, enabled = !state.loading, loading = state.loading, modifier = Modifier.fillMaxWidth())
         }
     }
 }

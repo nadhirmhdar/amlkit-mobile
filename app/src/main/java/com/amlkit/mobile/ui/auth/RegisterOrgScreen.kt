@@ -9,12 +9,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,7 +24,11 @@ import androidx.lifecycle.viewModelScope
 import com.amlkit.mobile.data.AmlkitRepository
 import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.ui.common.ErrorBanner
+import com.amlkit.mobile.ui.common.PillButton
+import com.amlkit.mobile.ui.common.TextLink
 import com.amlkit.mobile.ui.common.amlkitViewModel
+import com.amlkit.mobile.ui.theme.AmlInk
+import com.amlkit.mobile.ui.theme.AmlInk3
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -89,10 +90,11 @@ fun RegisterOrgScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(text = "Register your firm", style = MaterialTheme.typography.headlineSmall)
+        Text(text = "Register your firm", style = MaterialTheme.typography.displaySmall, color = AmlInk)
         Text(
             text = "You'll be the first MLRO for this organization.",
             style = MaterialTheme.typography.bodyMedium,
+            color = AmlInk3,
             modifier = Modifier.padding(bottom = 20.dp, top = 4.dp),
         )
 
@@ -124,16 +126,14 @@ fun RegisterOrgScreen(
             modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
         )
 
-        Button(
+        PillButton(
+            text = "Register",
             onClick = { viewModel.register(onRegistered) },
             enabled = !state.loading,
+            loading = state.loading,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (state.loading) CircularProgressIndicator(modifier = Modifier.size(20.dp)) else Text("Register")
-        }
+        )
 
-        TextButton(onClick = onBackToLogin, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Text("Already have an account? Sign in")
-        }
+        TextLink(text = "Already have an account? Sign in", onClick = onBackToLogin, modifier = Modifier.padding(top = 16.dp))
     }
 }

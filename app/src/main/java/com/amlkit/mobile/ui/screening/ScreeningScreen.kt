@@ -1,22 +1,29 @@
 package com.amlkit.mobile.ui.screening
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,19 +31,28 @@ import com.amlkit.mobile.data.AmlkitRepository
 import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.ScreenHitDto
 import com.amlkit.mobile.data.dto.ScreenResponse
+import com.amlkit.mobile.ui.common.CategoryTag
 import com.amlkit.mobile.ui.common.ErrorBanner
+import com.amlkit.mobile.ui.common.HairlineDivider
+import com.amlkit.mobile.ui.common.PillButton
 import com.amlkit.mobile.ui.common.PillTone
-import com.amlkit.mobile.ui.common.SectionCard
-import com.amlkit.mobile.ui.common.StatusPill
+import com.amlkit.mobile.ui.common.ScreenEyebrow
+import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.categoryTone
 import com.amlkit.mobile.ui.common.screenContentPadding
+import com.amlkit.mobile.ui.theme.AmlInk
+import com.amlkit.mobile.ui.theme.AmlInk2
+import com.amlkit.mobile.ui.theme.AmlInk3
+import com.amlkit.mobile.ui.theme.AmlLine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 data class ScreeningUiState(
     val query: String = "",
+    val nationality: String = "",
+    val birthDate: String = "",
     val loading: Boolean = false,
     val result: ScreenResponse? = null,
     val error: String? = null,
@@ -47,16 +63,19 @@ class ScreeningViewModel(private val repository: AmlkitRepository) : ViewModel()
     val state: StateFlow<ScreeningUiState> = _state
 
     fun onQueryChange(value: String) { _state.value = _state.value.copy(query = value) }
+    fun onNationalityChange(value: String) { _state.value = _state.value.copy(nationality = value) }
+    fun onBirthDateChange(value: String) { _state.value = _state.value.copy(birthDate = value) }
 
     fun runScreen() {
-        val name = _state.value.query.trim()
+        val current = _state.value
+        val name = current.query.trim()
         if (name.isEmpty()) {
             _state.value = _state.value.copy(error = "Enter a name to screen.")
             return
         }
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
-            when (val result = repository.screen(name)) {
+            when (val result = repository.screen(name, country = current.nationality.trim(), birthDate = current.birthDate.trim())) {
                 is ApiResult.Success -> _state.value = _state.value.copy(loading = false, result = result.data)
                 is ApiResult.Failure -> _state.value = _state.value.copy(loading = false, error = result.message)
             }
@@ -72,56 +91,147 @@ fun ScreeningScreen(repository: AmlkitRepository) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = screenContentPadding,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         item {
-            Text(text = "Ad-hoc screening", style = MaterialTheme.typography.headlineSmall)
-        }
-        item {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::onQueryChange,
-                label = { Text("Full name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        item {
-            Button(onClick = viewModel::runScreen, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) {
-                if (state.loading) CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                else Text("Screen")
+            Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                ScreenEyebrow(text = "Ad-hoc check")
+                ScreenTitle(text = "Screen a name", modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
+                HairlineDivider()
             }
+        }
+        item {
+            Column(modifier = Modifier.padding(top = 20.dp, bottom = 8.dp)) {
+                Text(
+                    text = "NAME — ARABIC OR LATIN SCRIPT",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AmlInk3,
+                )
+                TextField(
+                    value = state.query,
+                    onValueChange = viewModel::onQueryChange,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = AmlInk),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = AmlInk,
+                        unfocusedIndicatorColor = AmlLine,
+                        cursorColor = AmlInk,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(modifier = Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    InlinePillField(
+                        placeholder = "Nationality",
+                        value = state.nationality,
+                        onValueChange = viewModel::onNationalityChange,
+                    )
+                    InlinePillField(
+                        placeholder = "Date of birth",
+                        value = state.birthDate,
+                        onValueChange = viewModel::onBirthDateChange,
+                    )
+                }
+            }
+        }
+        item {
+            PillButton(
+                text = "Screen",
+                onClick = viewModel::runScreen,
+                enabled = !state.loading,
+                loading = state.loading,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
+            )
         }
         if (state.error != null) {
             item { ErrorBanner(message = state.error!!) }
         }
         state.result?.let { result ->
             item {
-                if (result.low_confidence) {
-                    ErrorBanner(message = "Single-word name: matching confidence is lower. Add a family name if possible.")
+                Column(modifier = Modifier.padding(top = 20.dp)) {
+                    if (result.low_confidence) {
+                        ErrorBanner(message = "Single-word name: matching confidence is lower. Add a family name if possible.")
+                    }
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Spacer(
+                            modifier = Modifier.size(6.dp).background(
+                                if (result.clear) com.amlkit.mobile.ui.theme.AmlGood else com.amlkit.mobile.ui.theme.AmlDanger,
+                                CircleShape,
+                            ),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (result.clear) "CLEAR — no hits" else "${result.hits.size} possible match${if (result.hits.size == 1) "" else "es"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AmlInk2,
+                        )
+                    }
+                    HairlineDivider(modifier = Modifier.padding(top = 14.dp), soft = true)
                 }
-                StatusPill(
-                    text = if (result.clear) "CLEAR — no hits" else "${result.hits.size} hit(s)",
-                    tone = if (result.clear) PillTone.SUCCESS else PillTone.DANGER,
-                )
             }
-            items(result.hits) { hit -> ScreeningHitCard(hit) }
+            items(result.hits) { hit -> ScreeningHitRow(hit) }
         }
     }
 }
 
 @Composable
-private fun ScreeningHitCard(hit: ScreenHitDto) {
-    SectionCard(title = hit.caption) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatusPill(text = hit.category, tone = categoryTone(hit.category))
-            Text(text = "score ${"%.3f".format(hit.score)}", style = MaterialTheme.typography.bodySmall)
+private fun ScreeningHitRow(hit: ScreenHitDto) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+        CategoryTag(text = hit.category, tone = categoryTone(hit.category), trailing = "%.2f".format(hit.score))
+        Text(text = hit.caption, style = MaterialTheme.typography.titleMedium, color = AmlInk, modifier = Modifier.padding(top = 6.dp))
+        Text(text = hit.dataset, style = MaterialTheme.typography.bodySmall, color = AmlInk3, modifier = Modifier.padding(top = 3.dp))
+        if (hit.matched_name.isNotBlank() && hit.matched_name != hit.caption) {
+            Text(text = "Matched name: ${hit.matched_name}", style = MaterialTheme.typography.bodySmall, color = AmlInk3, modifier = Modifier.padding(top = 2.dp))
         }
-        Text(text = "Dataset: ${hit.dataset}")
-        Text(text = "Matched name: ${hit.matched_name}")
-        hit.obligation?.let { Text(text = it, style = MaterialTheme.typography.bodySmall) }
+        hit.obligation?.let { obligation ->
+            Row(modifier = Modifier.padding(top = 10.dp)) {
+                Spacer(
+                    modifier = Modifier
+                        .padding(top = 7.dp)
+                        .size(4.dp)
+                        .background(AmlInk3, CircleShape),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = obligation, style = MaterialTheme.typography.bodySmall, color = AmlInk2)
+            }
+        }
         if (hit.aliases.isNotEmpty()) {
-            Text(text = "Aliases: " + hit.aliases.joinToString(", ") { it.name })
+            Text(
+                text = "Aliases: " + hit.aliases.joinToString(", ") { it.name },
+                style = MaterialTheme.typography.bodySmall,
+                color = AmlInk3,
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
     }
+    HairlineDivider(soft = true)
+}
+
+/** The mockup's small rounded-pill "Nationality" / "Date of birth" fields
+ * next to the name input -- optional context that narrows a screen, wired
+ * to the real country/birth_date params ScreenRequest already accepts. */
+@Composable
+private fun InlinePillField(placeholder: String, value: String, onValueChange: (String) -> Unit) {
+    androidx.compose.foundation.text.BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodySmall.copy(color = AmlInk2),
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(AmlInk),
+        decorationBox = { inner ->
+            Box(
+                modifier = Modifier
+                    .border(androidx.compose.foundation.BorderStroke(1.dp, AmlLine), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                contentAlignment = androidx.compose.ui.Alignment.CenterStart,
+            ) {
+                if (value.isEmpty()) {
+                    Text(text = placeholder, style = MaterialTheme.typography.bodySmall, color = AmlInk3)
+                }
+                inner()
+            }
+        },
+    )
 }

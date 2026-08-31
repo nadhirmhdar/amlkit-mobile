@@ -28,10 +28,13 @@ import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.FullScreenLoading
 import com.amlkit.mobile.ui.common.PillTone
 import com.amlkit.mobile.ui.common.Resource
+import com.amlkit.mobile.ui.common.ScreenEyebrow
+import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.SectionCard
 import com.amlkit.mobile.ui.common.StatusPill
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.screenContentPadding
+import androidx.compose.foundation.layout.Column
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -72,13 +75,23 @@ fun ReportsListScreen(
                 is Resource.Error -> ErrorBanner(message = current.message)
                 is Resource.Content -> {
                     if (current.data.isEmpty()) {
-                        Text(text = "No STR/SAR reports yet.", modifier = Modifier.padding(24.dp))
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            ScreenEyebrow(text = "More")
+                            ScreenTitle(text = "Reports", modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
+                            Text(text = "No STR/SAR reports yet.")
+                        }
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = screenContentPadding,
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
+                            item {
+                                Column(modifier = Modifier.padding(bottom = 4.dp)) {
+                                    ScreenEyebrow(text = "More")
+                                    ScreenTitle(text = "Reports", modifier = Modifier.padding(top = 2.dp))
+                                }
+                            }
                             items(current.data, key = { it.id }) { report ->
                                 SectionCard(title = "${report.report_type} — ${report.customer_name ?: "—"}") {
                                     StatusPill(

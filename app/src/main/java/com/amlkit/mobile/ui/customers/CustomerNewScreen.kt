@@ -5,15 +5,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,8 +25,12 @@ import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.CustomerCreateRequest
 import com.amlkit.mobile.data.dto.UboIn
 import com.amlkit.mobile.ui.common.ErrorBanner
+import com.amlkit.mobile.ui.common.PillButton
+import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.screenContentPadding
+import com.amlkit.mobile.ui.theme.AmlInk
+import com.amlkit.mobile.ui.theme.AmlInk2
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -108,7 +111,7 @@ fun CustomerNewScreen(repository: AmlkitRepository, onCreated: (Int) -> Unit) {
         contentPadding = screenContentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text(text = "Onboard a customer", style = MaterialTheme.typography.headlineSmall) }
+        item { ScreenTitle(text = "Onboard a customer") }
         if (state.error != null) {
             item { ErrorBanner(message = state.error!!) }
         }
@@ -139,8 +142,8 @@ fun CustomerNewScreen(repository: AmlkitRepository, onCreated: (Int) -> Unit) {
 
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Beneficial owners (25%+ or senior official)", style = MaterialTheme.typography.titleSmall)
-                TextButton(onClick = viewModel::addUbo) { Text("+ Add") }
+                Text(text = "Beneficial owners (25%+ or senior official)", style = MaterialTheme.typography.titleSmall, color = AmlInk)
+                Text(text = "+ Add", style = MaterialTheme.typography.labelLarge, color = AmlInk2, modifier = Modifier.clickable(onClick = viewModel::addUbo))
             }
         }
         itemsIndexed(state.ubos) { index, ubo ->
@@ -157,14 +160,17 @@ fun CustomerNewScreen(repository: AmlkitRepository, onCreated: (Int) -> Unit) {
                     label = { Text("% owned") },
                     modifier = Modifier.weight(0.5f),
                 )
-                TextButton(onClick = { viewModel.removeUbo(index) }) { Text("Remove") }
+                Text(
+                    text = "Remove",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = AmlInk2,
+                    modifier = Modifier.clickable { viewModel.removeUbo(index) }.padding(top = 18.dp),
+                )
             }
         }
 
         item {
-            Button(onClick = { viewModel.submit(onCreated) }, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) {
-                if (state.loading) CircularProgressIndicator(modifier = Modifier.size(20.dp)) else Text("Onboard & screen")
-            }
+            PillButton(text = "Onboard & screen", onClick = { viewModel.submit(onCreated) }, enabled = !state.loading, loading = state.loading, modifier = Modifier.fillMaxWidth())
         }
 
         state.blockedWarning?.let { warning -> item { ErrorBanner(message = warning) } }

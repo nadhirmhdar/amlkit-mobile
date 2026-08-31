@@ -2,6 +2,7 @@ package com.amlkit.mobile.ui.customers
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -20,9 +21,12 @@ import com.amlkit.mobile.data.dto.CustomerDetailResponse
 import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.FullScreenLoading
 import com.amlkit.mobile.ui.common.Resource
+import com.amlkit.mobile.ui.common.ScreenEyebrow
+import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.SectionCard
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.screenContentPadding
+import com.amlkit.mobile.ui.theme.AmlInk3
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -63,8 +67,9 @@ fun EvidenceScreen(repository: AmlkitRepository, customerId: Int) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    Text(text = "Evidence pack — ${data.customer.full_name}", style = MaterialTheme.typography.headlineSmall)
-                    Text(text = "Generated ${data.generated_at ?: ""}", style = MaterialTheme.typography.labelSmall)
+                    ScreenEyebrow(text = "Evidence pack")
+                    ScreenTitle(text = data.customer.full_name, modifier = Modifier.padding(top = 2.dp, bottom = 2.dp))
+                    Text(text = "Generated ${data.generated_at ?: ""}", style = MaterialTheme.typography.bodySmall, color = AmlInk3)
                 }
                 item {
                     SectionCard(title = "Customer") {
