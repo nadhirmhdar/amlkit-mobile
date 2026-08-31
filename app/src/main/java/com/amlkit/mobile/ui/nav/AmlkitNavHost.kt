@@ -120,7 +120,7 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
             }
             composable(Routes.ABOUT) { AboutScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.DASHBOARD) {
-                DashboardScreen(repository = repository, onOpenAlert = { navController.navigate(Routes.ALERTS) })
+                DashboardScreen(repository = repository, tokenStore = tokenStore, onOpenAlert = { navController.navigate(Routes.ALERTS) })
             }
             composable(Routes.SCREENING) { ScreeningScreen(repository = repository) }
             composable(Routes.CUSTOMERS) {

@@ -418,6 +418,22 @@ fun AlertsCallout(count: Int, onClick: () -> Unit, modifier: Modifier = Modifier
 }
 
 // ---------------------------------------------------------------------
+// Grovisor logo -- the mockups put this (not an "amlkit" wordmark) in
+// every top-level tab's header, sized by height with the source aspect
+// ratio preserved.
+// ---------------------------------------------------------------------
+
+@Composable
+fun GrovisorLogo(modifier: Modifier = Modifier, height: Dp = 26.dp) {
+    androidx.compose.foundation.Image(
+        painter = androidx.compose.ui.res.painterResource(com.amlkit.mobile.R.drawable.grovisor_logo),
+        contentDescription = "Grovisor",
+        modifier = modifier.height(height),
+        contentScale = androidx.compose.ui.layout.ContentScale.FillHeight,
+    )
+}
+
+// ---------------------------------------------------------------------
 // Avatar -- the initials circle in the top bar.
 // ---------------------------------------------------------------------
 

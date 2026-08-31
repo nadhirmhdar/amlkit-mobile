@@ -79,16 +79,30 @@ class DashboardViewModel(private val repository: AmlkitRepository) : ViewModel()
 @Composable
 fun DashboardScreen(
     repository: AmlkitRepository,
+    tokenStore: com.amlkit.mobile.data.AuthTokenStore,
     onOpenAlert: (Int) -> Unit,
 ) {
     val viewModel = amlkitViewModel(repository) { DashboardViewModel(it) }
     val state by viewModel.state.collectAsState()
+    val operatorName by tokenStore.operatorName.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
-    when (val current = state) {
-        is Resource.Loading -> FullScreenLoading(modifier = Modifier.fillMaxSize())
-        is Resource.Error -> ErrorBanner(message = current.message, modifier = Modifier.fillMaxSize())
-        is Resource.Content -> DashboardContent(current.data, onOpenAlert)
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            com.amlkit.mobile.ui.common.GrovisorLogo()
+            com.amlkit.mobile.ui.common.InitialsAvatar(name = operatorName)
+        }
+        Box(modifier = Modifier.weight(1f)) {
+            when (val current = state) {
+                is Resource.Loading -> FullScreenLoading(modifier = Modifier.fillMaxSize())
+                is Resource.Error -> ErrorBanner(message = current.message, modifier = Modifier.fillMaxSize())
+                is Resource.Content -> DashboardContent(current.data, onOpenAlert)
+            }
+        }
     }
 }
 

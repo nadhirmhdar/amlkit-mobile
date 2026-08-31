@@ -26,12 +26,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.amlkit.mobile.data.AmlkitRepository
 import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.AuthTokenStore
 import com.amlkit.mobile.ui.common.AlertsCallout
+import com.amlkit.mobile.ui.common.GrovisorLogo
 import com.amlkit.mobile.ui.common.IconTile
 import com.amlkit.mobile.ui.common.IconTileTone
 import com.amlkit.mobile.ui.common.InitialsAvatar
@@ -79,7 +79,7 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "amlkit", style = MaterialTheme.typography.titleLarge, color = AmlInk, fontWeight = FontWeight.ExtraBold)
+            GrovisorLogo()
             InitialsAvatar(name = operatorName)
         }
 

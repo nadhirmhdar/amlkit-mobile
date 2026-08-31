@@ -2,10 +2,9 @@ package com.amlkit.mobile.ui.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,6 +26,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amlkit.mobile.data.AmlkitRepository
 import com.amlkit.mobile.ui.common.ErrorBanner
+import com.amlkit.mobile.ui.common.GrovisorLogo
 import com.amlkit.mobile.ui.common.PillButton
 import com.amlkit.mobile.ui.common.TextLink
 import com.amlkit.mobile.ui.common.amlkitViewModel
@@ -84,57 +84,63 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 28.dp),
-        verticalArrangement = Arrangement.Center,
     ) {
-        Text(
-            text = "amlkit",
-            style = com.amlkit.mobile.ui.theme.AmlkitExtraType.wordmark,
-            color = AmlInk,
-        )
-        Text(
-            text = "UAE sanctions screening & CDD",
-            style = MaterialTheme.typography.bodyMedium,
-            color = AmlInk3,
-            modifier = Modifier.padding(top = 10.dp, bottom = 36.dp),
-        )
-
-        if (state.error != null) {
-            ErrorBanner(message = state.error!!, modifier = Modifier.padding(bottom = 12.dp))
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.End) {
+            GrovisorLogo(height = 28.dp)
         }
 
-        UnderlineField(
-            label = "Email",
-            value = state.email,
-            onValueChange = viewModel::onEmailChange,
-            keyboardType = KeyboardType.Email,
-            modifier = Modifier.padding(bottom = 22.dp),
-        )
-        UnderlineField(
-            label = "Password",
-            value = state.password,
-            onValueChange = viewModel::onPasswordChange,
-            keyboardType = KeyboardType.Password,
-            password = true,
-            modifier = Modifier.padding(bottom = 30.dp),
-        )
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = "amlkit",
+                style = com.amlkit.mobile.ui.theme.AmlkitExtraType.wordmark,
+                color = AmlInk,
+            )
+            Text(
+                text = "UAE sanctions screening & CDD",
+                style = MaterialTheme.typography.bodyMedium,
+                color = AmlInk3,
+                modifier = Modifier.padding(top = 10.dp, bottom = 36.dp),
+            )
 
-        PillButton(
-            text = "Sign in",
-            onClick = { viewModel.login(onLoggedIn) },
-            enabled = !state.loading,
-            loading = state.loading,
-            modifier = Modifier.fillMaxWidth(),
-        )
+            if (state.error != null) {
+                ErrorBanner(message = state.error!!, modifier = Modifier.padding(bottom = 12.dp))
+            }
 
-        TextLink(
-            text = "Register a new organization",
-            onClick = onGoToRegister,
-            modifier = Modifier.padding(top = 16.dp),
-        )
+            UnderlineField(
+                label = "Email",
+                value = state.email,
+                onValueChange = viewModel::onEmailChange,
+                keyboardType = KeyboardType.Email,
+                modifier = Modifier.padding(bottom = 22.dp),
+            )
+            UnderlineField(
+                label = "Password",
+                value = state.password,
+                onValueChange = viewModel::onPasswordChange,
+                keyboardType = KeyboardType.Password,
+                password = true,
+                modifier = Modifier.padding(bottom = 30.dp),
+            )
 
-        Spacer(modifier = Modifier.height(28.dp))
+            PillButton(
+                text = "Sign in",
+                onClick = { viewModel.login(onLoggedIn) },
+                enabled = !state.loading,
+                loading = state.loading,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            TextLink(
+                text = "Register a new organization",
+                onClick = onGoToRegister,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+        }
+
         androidx.compose.material3.HorizontalDivider(color = AmlLine)
         Text(
             text = "A product by Grovisor Business Consultants LLC.",
