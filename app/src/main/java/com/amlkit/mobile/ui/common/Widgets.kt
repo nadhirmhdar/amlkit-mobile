@@ -276,8 +276,11 @@ fun QuickActionCard(
 
 // ---------------------------------------------------------------------
 // Buttons -- the mockups never use a bare Material filled/outlined button;
-// every primary action is a fully rounded pill, ink (or danger) filled
-// with a warm gradient corner, uppercase-tracked label.
+// every primary action is an ink (or danger) filled, softly rounded
+// rectangle with a warm gradient corner and an uppercase-tracked label.
+// (Only the home screen's bottom alerts callout is a true full pill --
+// see AlertsCallout below -- everyday buttons use a 16dp corner radius,
+// matching the mockup's own button `border-radius` values, 12-16px.)
 // ---------------------------------------------------------------------
 
 enum class PillButtonTone { PRIMARY, DANGER, SECONDARY }
@@ -292,7 +295,7 @@ fun PillButton(
     loading: Boolean = false,
     height: Dp = 50.dp,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = RoundedCornerShape(16.dp)
     when (tone) {
         PillButtonTone.SECONDARY -> {
             Box(

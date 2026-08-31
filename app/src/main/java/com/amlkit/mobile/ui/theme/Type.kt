@@ -2,18 +2,26 @@ package com.amlkit.mobile.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.amlkit.mobile.R
 
-// The mockups set the brand typeface to Manrope, loaded from Google Fonts.
-// This app never calls out to any host except its own configured amlkit
-// server (see AndroidManifest.xml), so we don't pull a downloadable font at
-// runtime -- the system sans-serif (Roboto) stands in, tuned with the same
-// weights, sizes and tracking as the mockups so the type rhythm matches
-// even though the letterforms differ slightly.
-private val AmlFont = FontFamily.Default
+// The mockups set the brand typeface to Manrope. The five weights this app
+// actually uses (Normal/SemiBold/Bold/ExtraBold, plus Medium for headroom)
+// are bundled as static .ttf resources under res/font/ -- this is a
+// build-time asset, not a runtime fetch, so it doesn't conflict with the
+// app never calling out to any host but its own configured amlkit server
+// (see AndroidManifest.xml).
+private val AmlFont = FontFamily(
+    Font(R.font.manrope_regular, FontWeight.Normal),
+    Font(R.font.manrope_medium, FontWeight.Medium),
+    Font(R.font.manrope_semibold, FontWeight.SemiBold),
+    Font(R.font.manrope_bold, FontWeight.Bold),
+    Font(R.font.manrope_extrabold, FontWeight.ExtraBold),
+)
 
 // Numeric/reference values (scores, IDs, dates like "0.94") use the
 // mockup's `var(--mono)` token -- a monospace face for tabular alignment.
