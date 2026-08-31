@@ -211,6 +211,17 @@ typealias ColumnScope = androidx.compose.foundation.layout.ColumnScope
 
 val screenContentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
 
+/** Whole days between an ISO-8601 instant and now, e.g. for "3 days ago"
+ * labels -- null on a missing or unparsable timestamp. */
+fun daysAgo(iso: String?): Int? {
+    if (iso == null) return null
+    return try {
+        java.time.Duration.between(java.time.Instant.parse(iso), java.time.Instant.now()).toDays().toInt().coerceAtLeast(0)
+    } catch (e: Exception) {
+        null
+    }
+}
+
 /** The warm radial glow the mockups paint into the top-right corner of every
  * ink surface (`radial-gradient(circle at 100% 0%, ...)` in the CSS source)
  * -- a plain `Brush.radialGradient` can't place its center as a fraction of

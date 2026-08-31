@@ -54,6 +54,7 @@ import com.amlkit.mobile.ui.common.Resource
 import com.amlkit.mobile.ui.common.ScreenEyebrow
 import com.amlkit.mobile.ui.common.alertStatusTone
 import com.amlkit.mobile.ui.common.categoryTone
+import com.amlkit.mobile.ui.common.daysAgo
 import com.amlkit.mobile.ui.common.screenContentPadding
 import com.amlkit.mobile.ui.nav.AmlkitSubHeader
 import com.amlkit.mobile.ui.theme.AmlInk
@@ -64,8 +65,6 @@ import com.amlkit.mobile.ui.theme.AmlkitMonoStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.Duration
-import java.time.Instant
 
 data class AlertsUiState(
     val status: String = "open",
@@ -202,9 +201,16 @@ private fun AlertsQueue(
                 ScreenEyebrow(text = "Queue")
                 Text(text = "Alerts", style = MaterialTheme.typography.displaySmall, color = AmlInk, modifier = Modifier.padding(top = 2.dp))
             }
-            val openCount = (state.alerts as? Resource.Content)?.data?.size ?: 0
+            val visibleCount = (state.alerts as? Resource.Content)?.data?.size ?: 0
+            val countLabel = when (state.status) {
+                "open" -> "open"
+                "pending_review" -> "pending"
+                "escalated" -> "escalated"
+                "false_positive" -> "cleared"
+                else -> "total"
+            }
             Text(
-                text = "$openCount open",
+                text = "$visibleCount $countLabel",
                 style = AmlkitMonoStyle,
                 fontSize = MaterialTheme.typography.bodyMedium.fontSize,
                 color = AmlInk3,
@@ -324,15 +330,6 @@ private fun AlertRow(alert: AlertDto, onOpen: () -> Unit, onAssign: () -> Unit) 
         }
     }
     HairlineDivider(soft = true)
-}
-
-private fun daysAgo(iso: String?): Int? {
-    if (iso == null) return null
-    return try {
-        Duration.between(Instant.parse(iso), Instant.now()).toDays().toInt().coerceAtLeast(0)
-    } catch (e: Exception) {
-        null
-    }
 }
 
 @Composable

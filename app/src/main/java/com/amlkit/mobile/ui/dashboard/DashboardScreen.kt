@@ -48,6 +48,7 @@ import com.amlkit.mobile.ui.common.ScreenEyebrow
 import com.amlkit.mobile.ui.common.SectionCard
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.categoryTone
+import com.amlkit.mobile.ui.common.daysAgo
 import com.amlkit.mobile.ui.common.screenContentPadding
 import com.amlkit.mobile.ui.theme.AmlGood
 import com.amlkit.mobile.ui.theme.AmlInk
@@ -58,8 +59,6 @@ import com.amlkit.mobile.ui.theme.AmlkitExtraType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.Duration
-import java.time.Instant
 
 class DashboardViewModel(private val repository: AmlkitRepository) : ViewModel() {
     private val _state = MutableStateFlow<Resource<DashboardResponse>>(Resource.Loading)
@@ -106,15 +105,6 @@ fun DashboardScreen(
     }
 }
 
-private fun daysAgo(iso: String?): Int? {
-    if (iso == null) return null
-    return try {
-        Duration.between(Instant.parse(iso), Instant.now()).toDays().toInt().coerceAtLeast(0)
-    } catch (e: Exception) {
-        null
-    }
-}
-
 @Composable
 private fun DashboardContent(data: DashboardResponse, onOpenAlert: (Int) -> Unit) {
     LazyColumn(
@@ -158,7 +148,7 @@ private fun DashboardContent(data: DashboardResponse, onOpenAlert: (Int) -> Unit
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text(text = data.counts.alerts_total.toString(), style = AmlkitExtraType.heroNumber, color = Color.White)
+                    Text(text = data.open_alerts.size.toString(), style = AmlkitExtraType.heroNumber, color = Color.White)
                     Text(
                         text = "open alerts",
                         style = MaterialTheme.typography.bodySmall,
