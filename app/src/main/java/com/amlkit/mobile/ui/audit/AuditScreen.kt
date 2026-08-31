@@ -1,7 +1,9 @@
 package com.amlkit.mobile.ui.audit
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +22,8 @@ import com.amlkit.mobile.data.dto.AuditEntryDto
 import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.FullScreenLoading
 import com.amlkit.mobile.ui.common.Resource
+import com.amlkit.mobile.ui.common.ScreenEyebrow
+import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.SectionCard
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.screenContentPadding
@@ -57,7 +61,12 @@ fun AuditScreen(repository: AmlkitRepository) {
                 contentPadding = screenContentPadding,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                item { Text(text = "Audit trail", style = MaterialTheme.typography.headlineSmall) }
+                item {
+                    Column {
+                        ScreenEyebrow(text = "More")
+                        ScreenTitle(text = "Audit trail", modifier = Modifier.padding(top = 2.dp, bottom = 4.dp))
+                    }
+                }
                 items(current.data) { entry ->
                     SectionCard(title = entry.action) {
                         Text(text = "${entry.actor} · ${entry.created_at}")

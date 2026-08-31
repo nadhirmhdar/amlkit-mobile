@@ -16,6 +16,7 @@ object Routes {
     const val REPORT_NEW = "reports/new"
     const val REPORT_DETAIL = "reports/{reportId}"
     const val MORE = "more"
+    const val ABOUT = "about"
 
     fun customerDetail(customerId: Int) = "customers/$customerId"
     fun reportDetail(reportId: Int) = "reports/$reportId"

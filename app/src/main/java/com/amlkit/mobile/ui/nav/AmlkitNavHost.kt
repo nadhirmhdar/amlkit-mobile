@@ -1,28 +1,13 @@
 package com.amlkit.mobile.ui.nav
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -39,6 +24,7 @@ import com.amlkit.mobile.ui.customers.CustomerNewScreen
 import com.amlkit.mobile.ui.customers.CustomersListScreen
 import com.amlkit.mobile.ui.customers.EvidenceScreen
 import com.amlkit.mobile.ui.dashboard.DashboardScreen
+import com.amlkit.mobile.ui.home.AboutScreen
 import com.amlkit.mobile.ui.home.HomeScreen
 import com.amlkit.mobile.ui.more.MoreScreen
 import com.amlkit.mobile.ui.reports.ReportBuilderScreen
@@ -47,26 +33,17 @@ import com.amlkit.mobile.ui.reports.ReportsListScreen
 import com.amlkit.mobile.ui.screening.ScreeningScreen
 import kotlinx.coroutines.launch
 
-private data class BottomTab(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
-
-private val bottomTabs = listOf(
-    BottomTab(Routes.HOME, "Home", Icons.Filled.Home),
-    BottomTab(Routes.DASHBOARD, "Dashboard", Icons.Filled.List),
-    BottomTab(Routes.SCREENING, "Screen", Icons.Filled.Search),
-    BottomTab(Routes.CUSTOMERS, "Customers", Icons.Filled.People),
-    BottomTab(Routes.MORE, "More", Icons.Filled.MoreHoriz),
-)
-
 private val screenTitles = mapOf(
-    Routes.CUSTOMER_NEW to "Onboard customer",
-    Routes.CUSTOMER_DETAIL to "Case file",
-    "customers/{customerId}/evidence" to "Evidence pack",
-    Routes.ALERTS to "Alerts",
-    Routes.AUDIT to "Audit trail",
-    Routes.ADMIN to "Admin",
-    Routes.REPORTS to "Reports",
-    Routes.REPORT_NEW to "New report",
-    Routes.REPORT_DETAIL to "Report",
+    Routes.CUSTOMER_NEW to "Customers",
+    Routes.CUSTOMER_DETAIL to "Customers",
+    "customers/{customerId}/evidence" to "Case file",
+    Routes.ALERTS to "Home",
+    Routes.AUDIT to "More",
+    Routes.ADMIN to "More",
+    Routes.REPORTS to "More",
+    Routes.REPORT_NEW to "Reports",
+    Routes.REPORT_DETAIL to "Reports",
+    Routes.ABOUT to "Home",
 )
 
 @Composable
@@ -86,41 +63,29 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
         }
     }
 
-    val isTopLevel = currentRoute in bottomTabs.map { it.route }
+    val isTopLevel = currentRoute in bottomTabRoutes
     val isAuthRoute = currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER
 
     Scaffold(
+        containerColor = com.amlkit.mobile.ui.theme.AmlBg,
         topBar = {
             if (!isAuthRoute && !isTopLevel) {
-                val title = screenTitles[currentRoute] ?: ""
-                TopAppBar(
-                    title = { Text(title) },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                )
+                val label = screenTitles[currentRoute] ?: ""
+                AmlkitSubHeader(label = label, onBack = { navController.popBackStack() })
             }
         },
         bottomBar = {
             if (token != null && isTopLevel) {
-                NavigationBar {
-                    bottomTabs.forEach { tab ->
-                        NavigationBarItem(
-                            selected = currentRoute == tab.route,
-                            onClick = {
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label) },
-                        )
-                    }
-                }
+                AmlkitBottomBar(
+                    currentRoute = currentRoute,
+                    onSelect = { route ->
+                        navController.navigate(route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                )
             }
         },
     ) { padding ->
@@ -145,13 +110,15 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
             }
             composable(Routes.HOME) {
                 HomeScreen(
+                    repository = repository,
                     tokenStore = tokenStore,
                     onScreenName = { navController.navigate(Routes.SCREENING) },
-                    onViewCustomers = { navController.navigate(Routes.CUSTOMERS) },
+                    onNewCustomer = { navController.navigate(Routes.CUSTOMER_NEW) },
+                    onAbout = { navController.navigate(Routes.ABOUT) },
                     onViewAlerts = { navController.navigate(Routes.ALERTS) },
-                    onViewDashboard = { navController.navigate(Routes.DASHBOARD) },
                 )
             }
+            composable(Routes.ABOUT) { AboutScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.DASHBOARD) {
                 DashboardScreen(repository = repository, onOpenAlert = { navController.navigate(Routes.ALERTS) })
             }

@@ -1,18 +1,18 @@
 package com.amlkit.mobile.ui.admin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -27,14 +27,23 @@ import androidx.lifecycle.viewModelScope
 import com.amlkit.mobile.data.AmlkitRepository
 import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.AdminResponse
+import com.amlkit.mobile.ui.common.AmlDialogFieldShape
+import com.amlkit.mobile.ui.common.AmlDialogShape
 import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.FullScreenLoading
+import com.amlkit.mobile.ui.common.PillButton
+import com.amlkit.mobile.ui.common.PillButtonTone
 import com.amlkit.mobile.ui.common.PillTone
 import com.amlkit.mobile.ui.common.Resource
+import com.amlkit.mobile.ui.common.ScreenEyebrow
+import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.SectionCard
 import com.amlkit.mobile.ui.common.StatusPill
+import com.amlkit.mobile.ui.common.amlDialogFieldColors
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.screenContentPadding
+import com.amlkit.mobile.ui.theme.AmlInk
+import com.amlkit.mobile.ui.theme.AmlSurface
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -126,21 +135,24 @@ fun AdminScreen(repository: AmlkitRepository) {
                 contentPadding = screenContentPadding,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item { Text(text = "Admin — ${data.org.name}", style = MaterialTheme.typography.headlineSmall) }
+                item {
+                    Column {
+                        ScreenEyebrow(text = "More")
+                        ScreenTitle(text = data.org.name, modifier = Modifier.padding(top = 2.dp, bottom = 4.dp))
+                    }
+                }
                 if (message != null) item { ErrorBanner(message = message!!) }
 
                 item {
                     SectionCard(title = "Alert threshold") {
                         Text(text = "Current: ${data.threshold ?: "engine default (${data.default_threshold})"}")
+                        OutlinedTextField(
+                            value = thresholdText, onValueChange = { thresholdText = it },
+                            label = { Text("0.0 – 1.0") }, modifier = Modifier.fillMaxWidth(),
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = thresholdText, onValueChange = { thresholdText = it },
-                                label = { Text("0.0 – 1.0") }, modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { viewModel.setThreshold(thresholdText.toDoubleOrNull()) }) { Text("Save") }
-                            TextButton(onClick = { thresholdText = ""; viewModel.setThreshold(null) }) { Text("Reset to default") }
+                            PillButton(text = "Save", onClick = { viewModel.setThreshold(thresholdText.toDoubleOrNull()) }, height = 44.dp, modifier = Modifier.weight(1f))
+                            PillButton(text = "Reset", onClick = { thresholdText = ""; viewModel.setThreshold(null) }, tone = PillButtonTone.SECONDARY, height = 44.dp, modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -156,23 +168,26 @@ fun AdminScreen(repository: AmlkitRepository) {
                                 )
                             }
                         }
-                        Button(onClick = viewModel::refreshSanctions) { Text("Refresh now") }
+                        PillButton(text = "Refresh now", onClick = viewModel::refreshSanctions, tone = PillButtonTone.SECONDARY, height = 44.dp)
                     }
                 }
 
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(text = "Operators", style = MaterialTheme.typography.titleMedium)
-                        TextButton(onClick = { showCreateOperator = true }) { Text("+ Add") }
+                        Text(text = "Operators", style = MaterialTheme.typography.titleLarge, color = AmlInk)
+                        Text(
+                            text = "+ Add",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AmlInk,
+                            modifier = Modifier.clickable { showCreateOperator = true },
+                        )
                     }
                 }
                 items(data.operators) { op ->
                     SectionCard(title = op.name) {
                         Text(text = "${op.email} · ${op.role} · ${if (op.is_active == 1) "active" else "deactivated"}")
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (op.is_active == 1) {
-                                TextButton(onClick = { viewModel.deactivateOperator(op.id) }) { Text("Deactivate") }
-                            }
+                        if (op.is_active == 1) {
+                            PillButton(text = "Deactivate", onClick = { viewModel.deactivateOperator(op.id) }, tone = PillButtonTone.SECONDARY, height = 40.dp)
                         }
                     }
                 }
@@ -199,20 +214,22 @@ private fun CreateOperatorDialog(onDismiss: () -> Unit, onConfirm: (String, Stri
     var role by remember { mutableStateOf("officer") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add operator") },
+        containerColor = AmlSurface,
+        shape = AmlDialogShape,
+        title = { Text("Add operator", color = AmlInk, style = MaterialTheme.typography.titleLarge) },
         text = {
-            Column {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") })
-                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
-                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password (min. 10 chars)") })
-                OutlinedTextField(value = role, onValueChange = { role = it }, label = { Text("Role (mlro/officer)") })
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, colors = amlDialogFieldColors(), shape = AmlDialogFieldShape, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, colors = amlDialogFieldColors(), shape = AmlDialogFieldShape, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password (min. 10 chars)") }, colors = amlDialogFieldColors(), shape = AmlDialogFieldShape, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = role, onValueChange = { role = it }, label = { Text("Role (mlro/officer)") }, colors = amlDialogFieldColors(), shape = AmlDialogFieldShape, modifier = Modifier.fillMaxWidth())
             }
         },
         confirmButton = {
-            TextButton(onClick = {
+            PillButton(text = "Create", height = 44.dp, onClick = {
                 if (name.isNotBlank() && email.isNotBlank() && password.length >= 10) onConfirm(name, email, password, role)
-            }) { Text("Create") }
+            })
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { PillButton(text = "Cancel", tone = PillButtonTone.SECONDARY, height = 44.dp, onClick = onDismiss) },
     )
 }

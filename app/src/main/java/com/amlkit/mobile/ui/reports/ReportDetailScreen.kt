@@ -3,8 +3,11 @@ package com.amlkit.mobile.ui.reports
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,8 +27,11 @@ import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.ReportDetailResponse
 import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.FullScreenLoading
+import com.amlkit.mobile.ui.common.PillButton
+import com.amlkit.mobile.ui.common.PillButtonTone
 import com.amlkit.mobile.ui.common.PillTone
 import com.amlkit.mobile.ui.common.Resource
+import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.SectionCard
 import com.amlkit.mobile.ui.common.StatusPill
 import com.amlkit.mobile.ui.common.amlkitViewModel
@@ -80,7 +86,7 @@ fun ReportDetailScreen(repository: AmlkitRepository, reportId: Int) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    Text(text = "${report.report_type} — ${report.reference ?: ""}", style = MaterialTheme.typography.headlineSmall)
+                    ScreenTitle(text = "${report.report_type} — ${report.reference ?: ""}", modifier = Modifier.padding(bottom = 6.dp))
                     StatusPill(
                         text = report.status,
                         tone = if (report.status == "submitted") PillTone.SUCCESS else PillTone.WARNING,
@@ -107,18 +113,23 @@ fun ReportDetailScreen(repository: AmlkitRepository, reportId: Int) {
                     }
                 }
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column {
                         if (report.status != "submitted") {
-                            TextButton(onClick = viewModel::submit) { Text("Submit to UAE FIU") }
+                            PillButton(text = "Submit to UAE FIU", onClick = viewModel::submit, modifier = Modifier.fillMaxWidth())
                         }
-                        TextButton(onClick = {
-                            coroutineScope.launch {
-                                when (val result = repository.exportReportXml(reportId)) {
-                                    is ApiResult.Success -> shareXml(context, result.data)
-                                    is ApiResult.Failure -> Unit
+                        PillButton(
+                            text = "Export goAML XML",
+                            tone = PillButtonTone.SECONDARY,
+                            onClick = {
+                                coroutineScope.launch {
+                                    when (val result = repository.exportReportXml(reportId)) {
+                                        is ApiResult.Success -> shareXml(context, result.data)
+                                        is ApiResult.Failure -> Unit
+                                    }
                                 }
-                            }
-                        }) { Text("Export goAML XML") }
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                        )
                     }
                 }
             }

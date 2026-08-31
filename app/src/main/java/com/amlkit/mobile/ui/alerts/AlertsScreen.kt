@@ -1,21 +1,29 @@
 package com.amlkit.mobile.ui.alerts
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,16 +38,24 @@ import androidx.lifecycle.viewModelScope
 import com.amlkit.mobile.data.AmlkitRepository
 import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.AlertDto
+import com.amlkit.mobile.ui.common.CategoryTag
 import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.FullScreenLoading
-import com.amlkit.mobile.ui.common.PillTone
-import com.amlkit.mobile.ui.common.Resource
-import com.amlkit.mobile.ui.common.SectionCard
-import com.amlkit.mobile.ui.common.StatusPill
-import com.amlkit.mobile.ui.common.alertStatusTone
+import com.amlkit.mobile.ui.common.HairlineDivider
+import com.amlkit.mobile.ui.common.PillButton
+import com.amlkit.mobile.ui.common.PillButtonTone
+import com.amlkit.mobile.ui.common.PillButtonWeighted
 import com.amlkit.mobile.ui.common.amlkitViewModel
+import com.amlkit.mobile.ui.common.Resource
+import com.amlkit.mobile.ui.common.ScreenEyebrow
 import com.amlkit.mobile.ui.common.categoryTone
 import com.amlkit.mobile.ui.common.screenContentPadding
+import com.amlkit.mobile.ui.theme.AmlInk
+import com.amlkit.mobile.ui.theme.AmlInk2
+import com.amlkit.mobile.ui.theme.AmlInk3
+import com.amlkit.mobile.ui.theme.AmlLine
+import com.amlkit.mobile.ui.theme.AmlSurface
+import com.amlkit.mobile.ui.theme.AmlkitMonoStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -127,17 +143,36 @@ fun AlertsScreen(repository: AmlkitRepository) {
     var assignTarget by remember { mutableStateOf<AlertDto?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(screenContentPadding),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            listOf("open" to "Open", "pending_review" to "Pending review", "all" to "All").forEach { (value, label) ->
-                FilterChip(selected = state.status == value, onClick = { viewModel.setStatus(value) }, label = { Text(label) })
+        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    ScreenEyebrow(text = "Queue")
+                    Text(text = "Alerts", style = MaterialTheme.typography.displaySmall, color = AmlInk, modifier = Modifier.padding(top = 2.dp))
+                }
+                val openCount = (state.alerts as? Resource.Content)?.data?.size ?: 0
+                Text(
+                    text = "$openCount open",
+                    style = AmlkitMonoStyle,
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                    color = AmlInk3,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
             }
+            Row(modifier = Modifier.padding(top = 16.dp)) {
+                listOf("open" to "Open", "pending_review" to "Pending review", "all" to "All").forEach { (value, label) ->
+                    StatusTab(label = label, selected = state.status == value, onClick = { viewModel.setStatus(value) })
+                }
+            }
+            HairlineDivider()
         }
 
         if (state.actionMessage != null) {
-            SectionCard(title = "Done") { Text(state.actionMessage!!) }
+            Text(
+                text = state.actionMessage!!,
+                color = com.amlkit.mobile.ui.theme.AmlGood,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+            )
         }
         if (state.actionError != null) {
             ErrorBanner(message = state.actionError!!)
@@ -148,12 +183,16 @@ fun AlertsScreen(repository: AmlkitRepository) {
             is Resource.Error -> ErrorBanner(message = resource.message, modifier = Modifier.fillMaxSize())
             is Resource.Content -> {
                 if (resource.data.isEmpty()) {
-                    Text(text = "No alerts in this view.", modifier = Modifier.fillMaxSize())
+                    Text(
+                        text = "No alerts in this view.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AmlInk3,
+                        modifier = Modifier.padding(20.dp),
+                    )
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = screenContentPadding,
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         items(resource.data, key = { it.id }) { alert ->
                             AlertRow(
@@ -201,28 +240,82 @@ fun AlertsScreen(repository: AmlkitRepository) {
 }
 
 @Composable
+private fun StatusTab(label: String, selected: Boolean, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .padding(end = 22.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            color = if (selected) AmlInk else AmlInk3,
+            modifier = Modifier.padding(bottom = 11.dp),
+        )
+        Spacer(
+            modifier = Modifier
+                .height(2.dp)
+                .then(if (selected) Modifier.fillMaxWidth() else Modifier)
+                .background(if (selected) AmlInk else androidx.compose.ui.graphics.Color.Transparent),
+        )
+    }
+}
+
+@Composable
 private fun AlertRow(
     alert: AlertDto,
     onDisposition: () -> Unit,
     onConfirm: () -> Unit,
     onAssign: () -> Unit,
 ) {
-    SectionCard(title = alert.matched_party ?: alert.caption) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatusPill(text = alert.category, tone = categoryTone(alert.category))
-            StatusPill(text = alert.status, tone = alertStatusTone(alert.status))
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+        CategoryTag(text = alert.category, tone = categoryTone(alert.category), trailing = "%.2f".format(alert.score))
+        Text(
+            text = alert.matched_party ?: alert.caption,
+            style = MaterialTheme.typography.titleMedium,
+            color = AmlInk,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        val meta = buildString {
+            append(alert.customer_name?.let { "${it}" } ?: alert.dataset_title ?: alert.dataset ?: "")
+            if (alert.reference != null) append(" · ${alert.reference}")
         }
-        Text(text = "Matched: ${alert.caption} · score ${"%.2f".format(alert.score)} · ${alert.dataset_title ?: alert.dataset}")
-        if (alert.customer_name != null) Text(text = "Customer: ${alert.customer_name} (${alert.reference})")
-        Text(text = "Assigned: ${alert.assigned_to ?: "unassigned"}", style = MaterialTheme.typography.labelSmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (alert.status == "pending_review") {
-                TextButton(onClick = onConfirm) { Text("Confirm review") }
-            } else if (alert.status == "open") {
-                TextButton(onClick = onDisposition) { Text("Disposition") }
+        if (meta.isNotBlank()) {
+            Text(text = meta, style = MaterialTheme.typography.bodySmall, color = AmlInk3, modifier = Modifier.padding(top = 3.dp))
+        }
+        Text(
+            text = "Assigned: ${alert.assigned_to ?: "unassigned"}",
+            style = MaterialTheme.typography.bodySmall,
+            color = AmlInk3,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PillButtonWeighted(text = "Assign", onClick = onAssign, tone = PillButtonTone.SECONDARY)
+            when (alert.status) {
+                "pending_review" -> PillButtonWeighted(text = "Confirm review", onClick = onConfirm)
+                "open" -> PillButtonWeighted(text = "Disposition", onClick = onDisposition)
             }
-            TextButton(onClick = onAssign) { Text("Assign") }
         }
+    }
+    HairlineDivider(soft = true)
+}
+
+@Composable
+private fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(50)
+    Box(
+        modifier = Modifier
+            .clip(shape)
+            .background(if (selected) AmlInk else androidx.compose.ui.graphics.Color.Transparent, shape)
+            .then(if (!selected) Modifier.border(BorderStroke(1.dp, AmlLine), shape) else Modifier)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) androidx.compose.ui.graphics.Color.White else AmlInk2,
+        )
     }
 }
 
@@ -239,16 +332,23 @@ private fun DispositionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Disposition alert") },
+        containerColor = AmlSurface,
+        shape = com.amlkit.mobile.ui.common.AmlDialogShape,
+        title = { Text("Disposition alert", color = AmlInk, style = MaterialTheme.typography.titleLarge) },
         text = {
             Column {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("false_positive", "true_positive", "escalated").forEach { option ->
-                        FilterChip(selected = status == option, onClick = { status = option }, label = { Text(option) })
+                        ChoiceChip(text = option.replace("_", " "), selected = status == option, onClick = { status = option })
                     }
                 }
-                Text(text = "Reason: ${reasonCodes[reasonCode] ?: reasonCode}", modifier = Modifier.fillMaxWidth())
-                TextButton(onClick = { reasonMenuOpen = true }) { Text("Choose reason") }
+                Box(modifier = Modifier.padding(top = 14.dp).clickable { reasonMenuOpen = true }) {
+                    Text(
+                        text = "Reason: ${reasonCodes[reasonCode] ?: reasonCode}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AmlInk2,
+                    )
+                }
                 DropdownMenu(expanded = reasonMenuOpen, onDismissRequest = { reasonMenuOpen = false }) {
                     reasonCodes.forEach { (code, label) ->
                         DropdownMenuItem(text = { Text(label) }, onClick = { reasonCode = code; reasonMenuOpen = false })
@@ -257,11 +357,14 @@ private fun DispositionDialog(
                 OutlinedTextField(
                     value = narrative, onValueChange = { narrative = it },
                     label = { Text("Narrative (required for true positive / escalated)") },
+                    colors = com.amlkit.mobile.ui.common.amlDialogFieldColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(top = 14.dp).fillMaxWidth(),
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(status, reasonCode, narrative) }) { Text("Submit") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { PillButton(text = "Submit", onClick = { onConfirm(status, reasonCode, narrative) }, height = 44.dp) },
+        dismissButton = { PillButton(text = "Cancel", onClick = onDismiss, tone = PillButtonTone.SECONDARY, height = 44.dp) },
     )
 }
 
@@ -270,15 +373,27 @@ private fun ConfirmReviewDialog(onDismiss: () -> Unit, onConfirm: (agree: Boolea
     var narrative by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Independent review") },
+        containerColor = AmlSurface,
+        shape = com.amlkit.mobile.ui.common.AmlDialogShape,
+        title = { Text("Independent review", color = AmlInk, style = MaterialTheme.typography.titleLarge) },
         text = {
             Column {
-                Text("Confirming requires a different operator than the one who proposed the disposition.")
-                OutlinedTextField(value = narrative, onValueChange = { narrative = it }, label = { Text("Narrative (optional)") })
+                Text(
+                    "Confirming requires a different operator than the one who proposed the disposition.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AmlInk2,
+                )
+                OutlinedTextField(
+                    value = narrative, onValueChange = { narrative = it },
+                    label = { Text("Narrative (optional)") },
+                    colors = com.amlkit.mobile.ui.common.amlDialogFieldColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(top = 14.dp).fillMaxWidth(),
+                )
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(true, narrative) }) { Text("Agree & confirm") } },
-        dismissButton = { TextButton(onClick = { onConfirm(false, narrative) }) { Text("Override & escalate") } },
+        confirmButton = { PillButton(text = "Agree & confirm", onClick = { onConfirm(true, narrative) }, height = 44.dp) },
+        dismissButton = { PillButton(text = "Override & escalate", onClick = { onConfirm(false, narrative) }, tone = PillButtonTone.DANGER, height = 44.dp) },
     )
 }
 
@@ -287,9 +402,19 @@ private fun AssignDialog(initial: String, onDismiss: () -> Unit, onConfirm: (Str
     var operator by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Assign alert") },
-        text = { OutlinedTextField(value = operator, onValueChange = { operator = it }, label = { Text("Operator name (blank to clear)") }) },
-        confirmButton = { TextButton(onClick = { onConfirm(operator) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        containerColor = AmlSurface,
+        shape = com.amlkit.mobile.ui.common.AmlDialogShape,
+        title = { Text("Assign alert", color = AmlInk, style = MaterialTheme.typography.titleLarge) },
+        text = {
+            OutlinedTextField(
+                value = operator, onValueChange = { operator = it },
+                label = { Text("Operator name (blank to clear)") },
+                colors = com.amlkit.mobile.ui.common.amlDialogFieldColors(),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { PillButton(text = "Save", onClick = { onConfirm(operator) }, height = 44.dp) },
+        dismissButton = { PillButton(text = "Cancel", onClick = onDismiss, tone = PillButtonTone.SECONDARY, height = 44.dp) },
     )
 }
