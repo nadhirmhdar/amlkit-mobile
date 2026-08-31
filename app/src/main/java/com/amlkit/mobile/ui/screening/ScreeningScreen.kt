@@ -1,6 +1,7 @@
 package com.amlkit.mobile.ui.screening
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,8 @@ import kotlinx.coroutines.launch
 
 data class ScreeningUiState(
     val query: String = "",
+    val nationality: String = "",
+    val birthDate: String = "",
     val loading: Boolean = false,
     val result: ScreenResponse? = null,
     val error: String? = null,
@@ -60,16 +63,19 @@ class ScreeningViewModel(private val repository: AmlkitRepository) : ViewModel()
     val state: StateFlow<ScreeningUiState> = _state
 
     fun onQueryChange(value: String) { _state.value = _state.value.copy(query = value) }
+    fun onNationalityChange(value: String) { _state.value = _state.value.copy(nationality = value) }
+    fun onBirthDateChange(value: String) { _state.value = _state.value.copy(birthDate = value) }
 
     fun runScreen() {
-        val name = _state.value.query.trim()
+        val current = _state.value
+        val name = current.query.trim()
         if (name.isEmpty()) {
             _state.value = _state.value.copy(error = "Enter a name to screen.")
             return
         }
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
-            when (val result = repository.screen(name)) {
+            when (val result = repository.screen(name, country = current.nationality.trim(), birthDate = current.birthDate.trim())) {
                 is ApiResult.Success -> _state.value = _state.value.copy(loading = false, result = result.data)
                 is ApiResult.Failure -> _state.value = _state.value.copy(loading = false, error = result.message)
             }
@@ -116,6 +122,18 @@ fun ScreeningScreen(repository: AmlkitRepository) {
                     ),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Row(modifier = Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    InlinePillField(
+                        placeholder = "Nationality",
+                        value = state.nationality,
+                        onValueChange = viewModel::onNationalityChange,
+                    )
+                    InlinePillField(
+                        placeholder = "Date of birth",
+                        value = state.birthDate,
+                        onValueChange = viewModel::onBirthDateChange,
+                    )
+                }
             }
         }
         item {
@@ -189,4 +207,31 @@ private fun ScreeningHitRow(hit: ScreenHitDto) {
         }
     }
     HairlineDivider(soft = true)
+}
+
+/** The mockup's small rounded-pill "Nationality" / "Date of birth" fields
+ * next to the name input -- optional context that narrows a screen, wired
+ * to the real country/birth_date params ScreenRequest already accepts. */
+@Composable
+private fun InlinePillField(placeholder: String, value: String, onValueChange: (String) -> Unit) {
+    androidx.compose.foundation.text.BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodySmall.copy(color = AmlInk2),
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(AmlInk),
+        decorationBox = { inner ->
+            Box(
+                modifier = Modifier
+                    .border(androidx.compose.foundation.BorderStroke(1.dp, AmlLine), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                contentAlignment = androidx.compose.ui.Alignment.CenterStart,
+            ) {
+                if (value.isEmpty()) {
+                    Text(text = placeholder, style = MaterialTheme.typography.bodySmall, color = AmlInk3)
+                }
+                inner()
+            }
+        },
+    )
 }

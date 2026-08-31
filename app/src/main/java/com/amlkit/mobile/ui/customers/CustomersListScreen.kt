@@ -63,16 +63,26 @@ class CustomersListViewModel(private val repository: AmlkitRepository) : ViewMod
 @Composable
 fun CustomersListScreen(
     repository: AmlkitRepository,
+    tokenStore: com.amlkit.mobile.data.AuthTokenStore,
     onOpenCustomer: (Int) -> Unit,
     onNewCustomer: () -> Unit,
 ) {
     val viewModel = amlkitViewModel(repository) { CustomersListViewModel(it) }
     val state by viewModel.state.collectAsState()
+    val operatorName by tokenStore.operatorName.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            com.amlkit.mobile.ui.common.GrovisorLogo()
+            com.amlkit.mobile.ui.common.InitialsAvatar(name = operatorName)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {

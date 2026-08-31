@@ -195,9 +195,13 @@ private fun CustomerDetailContent(
 
         item { SectionHeading("Risk assessment") }
         item {
+            val lastScreened = data.screenings.maxByOrNull { it.run_at }?.run_at
             Column {
+                LabelValueRow("Customer type", data.customer.customer_type.replaceFirstChar { it.uppercase() })
+                LabelValueRow("Jurisdiction", data.customer.country ?: data.customer.nationality ?: "—")
                 LabelValueRow("Score", data.risk?.score?.toString() ?: "—")
                 LabelValueRow("Enhanced due diligence", if (data.risk?.requires_edd == 1) "Required" else "Not required")
+                LabelValueRow("Last screened", lastScreened ?: "—")
                 LabelValueRow("Next review", data.risk?.next_review ?: "—")
             }
         }
@@ -238,7 +242,7 @@ private fun CustomerDetailContent(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = ubo.person_name, style = MaterialTheme.typography.titleMedium, color = AmlInk)
                     Text(
-                        text = "${ubo.control_type} · ${if (ubo.is_ubo == 1) "UBO" else "recorded owner"}",
+                        text = "${ubo.nationality ?: "Nationality unknown"} · ${ubo.control_type}${if (ubo.is_ubo == 1) " · UBO" else ""}",
                         style = MaterialTheme.typography.bodySmall,
                         color = AmlInk3,
                         modifier = Modifier.padding(top = 2.dp),
@@ -265,7 +269,14 @@ private fun CustomerDetailContent(
                 Spacer(modifier = Modifier.size(5.dp).background(if (txn.direction == "in") AmlGood else AmlWarn, CircleShape))
                 Spacer(modifier = Modifier.width(9.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "${txn.method} ${txn.direction}", style = MaterialTheme.typography.titleSmall, color = AmlInk)
+                    val directionLabel = if (txn.direction == "in") "Inbound" else "Outbound"
+                    val methodLabel = txn.method.replaceFirstChar { it.uppercase() }
+                    val place = txn.counterparty_country ?: txn.counterparty_name
+                    Text(
+                        text = "$directionLabel $methodLabel" + (place?.let { ", $it" } ?: ""),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = AmlInk,
+                    )
                     Text(text = txn.occurred_at, style = MaterialTheme.typography.bodySmall, color = AmlInk3, modifier = Modifier.padding(top = 2.dp))
                 }
                 Text(text = "${txn.amount} ${txn.currency}", style = AmlkitMonoStyle, fontSize = MaterialTheme.typography.bodyMedium.fontSize, color = AmlInk2)

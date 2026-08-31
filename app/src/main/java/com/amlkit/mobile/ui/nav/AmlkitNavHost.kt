@@ -126,6 +126,7 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
             composable(Routes.CUSTOMERS) {
                 CustomersListScreen(
                     repository = repository,
+                    tokenStore = tokenStore,
                     onOpenCustomer = { id -> navController.navigate(Routes.customerDetail(id)) },
                     onNewCustomer = { navController.navigate(Routes.CUSTOMER_NEW) },
                 )

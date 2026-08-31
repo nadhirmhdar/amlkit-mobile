@@ -53,37 +53,47 @@ fun MoreScreen(
         }
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = com.amlkit.mobile.ui.common.screenContentPadding) {
-        item {
-            Column(modifier = Modifier.padding(bottom = 12.dp)) {
-                ScreenEyebrow(text = operatorName ?: "Account")
-                ScreenTitle(text = "More", modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
-                HairlineDivider()
-            }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            com.amlkit.mobile.ui.common.GrovisorLogo()
+            com.amlkit.mobile.ui.common.InitialsAvatar(name = operatorName)
         }
-        items(items) { item ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = item.onClick)
-                    .padding(vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = item.title, style = MaterialTheme.typography.titleLarge, color = AmlInk)
-                    Text(text = item.subtitle, style = MaterialTheme.typography.bodySmall, color = AmlInk3)
+        LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = com.amlkit.mobile.ui.common.screenContentPadding) {
+            item {
+                Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                    ScreenEyebrow(text = operatorName ?: "Account")
+                    ScreenTitle(text = "More", modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
+                    HairlineDivider()
                 }
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = AmlInk3, modifier = Modifier.size(18.dp))
             }
-            HairlineDivider(soft = true)
-        }
-        item {
-            PillButton(
-                text = "Sign out",
-                onClick = onLogout,
-                tone = PillButtonTone.SECONDARY,
-                modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-            )
+            items(items) { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = item.onClick)
+                        .padding(vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = item.title, style = MaterialTheme.typography.titleLarge, color = AmlInk)
+                        Text(text = item.subtitle, style = MaterialTheme.typography.bodySmall, color = AmlInk3)
+                    }
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = AmlInk3, modifier = Modifier.size(18.dp))
+                }
+                HairlineDivider(soft = true)
+            }
+            item {
+                PillButton(
+                    text = "Sign out",
+                    onClick = onLogout,
+                    tone = PillButtonTone.SECONDARY,
+                    modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+                )
+            }
         }
     }
 }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -158,8 +160,14 @@ fun AlertsScreen(repository: AmlkitRepository) {
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
             }
-            Row(modifier = Modifier.padding(top = 16.dp)) {
-                listOf("open" to "Open", "pending_review" to "Pending review", "all" to "All").forEach { (value, label) ->
+            Row(modifier = Modifier.padding(top = 16.dp).horizontalScroll(rememberScrollState())) {
+                listOf(
+                    "open" to "Open",
+                    "pending_review" to "Pending review",
+                    "escalated" to "Escalated",
+                    "false_positive" to "Cleared",
+                    "all" to "All",
+                ).forEach { (value, label) ->
                     StatusTab(label = label, selected = state.status == value, onClick = { viewModel.setStatus(value) })
                 }
             }
