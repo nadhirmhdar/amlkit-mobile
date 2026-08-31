@@ -46,6 +46,14 @@ object ApiClient {
         val client = OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(tokenStore))
             .addInterceptor(logging)
+            // The default 10s OkHttp timeouts are too short for this app's
+            // backend: it runs on Cloud Run with min-instances 0 to keep
+            // idle cost at zero, so the first request after any idle period
+            // has to wait out a cold container start, which can comfortably
+            // exceed 10s.
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .build()
 
         val contentType = "application/json".toMediaType()
