@@ -160,6 +160,7 @@ private fun UnderlineField(
     keyboardType: KeyboardType = KeyboardType.Text,
     password: Boolean = false,
 ) {
+    var passwordVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = label.uppercase(),
@@ -172,7 +173,26 @@ private fun UnderlineField(
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = AmlInk, fontWeight = FontWeight.Normal),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+            visualTransformation = when {
+                !password -> androidx.compose.ui.text.input.VisualTransformation.None
+                passwordVisible -> androidx.compose.ui.text.input.VisualTransformation.None
+                else -> PasswordVisualTransformation()
+            },
+            trailingIcon = if (password) {
+                {
+                    androidx.compose.material3.IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        androidx.compose.material3.Icon(
+                            imageVector = if (passwordVisible) {
+                                androidx.compose.material.icons.Icons.Filled.VisibilityOff
+                            } else {
+                                androidx.compose.material.icons.Icons.Filled.Visibility
+                            },
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            tint = AmlInk3,
+                        )
+                    }
+                }
+            } else null,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
