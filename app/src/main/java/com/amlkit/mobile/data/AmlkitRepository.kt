@@ -14,6 +14,7 @@ import com.amlkit.mobile.data.dto.CustomerCreateResponse
 import com.amlkit.mobile.data.dto.CustomerDetailResponse
 import com.amlkit.mobile.data.dto.CustomersListResponse
 import com.amlkit.mobile.data.dto.DashboardResponse
+import com.amlkit.mobile.data.dto.DatasetsResponse
 import com.amlkit.mobile.data.dto.LoginRequest
 import com.amlkit.mobile.data.dto.NoteRequest
 import com.amlkit.mobile.data.dto.NoteResponse
@@ -32,6 +33,8 @@ import com.amlkit.mobile.data.dto.ReportsResponse
 import com.amlkit.mobile.data.dto.ReviewOutcomeDto
 import com.amlkit.mobile.data.dto.ScreenRequest
 import com.amlkit.mobile.data.dto.ScreenResponse
+import com.amlkit.mobile.data.dto.SetupCheckResponse
+import com.amlkit.mobile.data.dto.SetupSubmitRequest
 import com.amlkit.mobile.data.dto.SignatureRequest
 import com.amlkit.mobile.data.dto.SignatureResponse
 import com.amlkit.mobile.data.dto.ThresholdRequest
@@ -98,6 +101,12 @@ class AmlkitRepository(
         return result
     }
 
+    suspend fun setupCheck(token: String): ApiResult<SetupCheckResponse> = safeApiCall { api.setupCheck(token) }
+
+    suspend fun setupSubmit(token: String, name: String, email: String, password: String): ApiResult<AuthResponse> =
+        safeApiCall { api.setupSubmit(SetupSubmitRequest(token, name, email, password)) }
+            .also { if (it is ApiResult.Success) persistSession(it.data) }
+
     private fun persistSession(auth: AuthResponse) {
         tokenStore.save(auth.token, auth.operator.name, auth.operator.role)
     }
@@ -160,6 +169,8 @@ class AmlkitRepository(
 
     // ---------------------------------------------------------------- admin
     suspend fun admin(): ApiResult<AdminResponse> = safeApiCall { api.admin() }
+
+    suspend fun datasets(): ApiResult<DatasetsResponse> = safeApiCall { api.datasets() }
 
     suspend fun setThreshold(threshold: Double?): ApiResult<ThresholdResponse> =
         safeApiCall { api.setThreshold(ThresholdRequest(threshold)) }

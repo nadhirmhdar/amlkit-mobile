@@ -1,7 +1,10 @@
 package com.amlkit.mobile.ui.customers
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -20,6 +24,8 @@ import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.CustomerDetailResponse
 import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.FullScreenLoading
+import com.amlkit.mobile.ui.common.PillButton
+import com.amlkit.mobile.ui.common.PillButtonTone
 import com.amlkit.mobile.ui.common.Resource
 import com.amlkit.mobile.ui.common.ScreenEyebrow
 import com.amlkit.mobile.ui.common.ScreenTitle
@@ -32,9 +38,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /** Evidence pack: the same case-file data the web app's printable evidence
- * page renders, shown as a scrollable read-only summary. There is no PDF
- * export here yet -- see the "Not built yet" list in the repo README --
- * this is the on-device review, not the inspector-ready artifact. */
+ * page renders, shown as a scrollable read-only summary. There is no
+ * generated-PDF export here -- see the "Not built yet" list in the repo
+ * README -- but the same plain-text-via-share-sheet pattern the goAML
+ * export already uses (ReportDetailScreen.shareXml) lets an operator get
+ * this off the device to an auditor without waiting on a PDF renderer. */
 class EvidenceViewModel(private val repository: AmlkitRepository) : ViewModel() {
     private val _state = MutableStateFlow<Resource<CustomerDetailResponse>>(Resource.Loading)
     val state: StateFlow<Resource<CustomerDetailResponse>> = _state
@@ -54,6 +62,7 @@ class EvidenceViewModel(private val repository: AmlkitRepository) : ViewModel() 
 fun EvidenceScreen(repository: AmlkitRepository, customerId: Int) {
     val viewModel = amlkitViewModel(repository) { EvidenceViewModel(it) }
     val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
     LaunchedEffect(customerId) { viewModel.load(customerId) }
 
     when (val current = state) {
@@ -105,7 +114,59 @@ fun EvidenceScreen(repository: AmlkitRepository, customerId: Int) {
                         Text("${entry.created_at} — ${entry.actor} — ${entry.action}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
+                item {
+                    PillButton(
+                        text = "Share evidence pack",
+                        tone = PillButtonTone.SECONDARY,
+                        onClick = { shareEvidenceText(context, buildEvidenceText(data)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
     }
+}
+
+private fun buildEvidenceText(data: CustomerDetailResponse): String = buildString {
+    appendLine("Evidence pack — ${data.customer.full_name}")
+    appendLine("Generated ${data.generated_at ?: ""}")
+    appendLine()
+    appendLine("Customer")
+    appendLine("Reference: ${data.customer.reference}")
+    appendLine("Type: ${data.customer.customer_type}")
+    appendLine("Onboarded: ${data.customer.onboarded_at}")
+    appendLine("Status: ${data.customer.status}")
+    appendLine()
+    appendLine("Risk")
+    appendLine("Rating: ${data.risk?.rating ?: "—"}   Score: ${data.risk?.score ?: "—"}")
+    if (data.screenings.isNotEmpty()) {
+        appendLine()
+        appendLine("Screening history")
+        data.screenings.forEach { s ->
+            appendLine("${s.run_at} — ${s.trigger} — ${s.hits} hit(s) of ${s.candidates} candidates")
+        }
+    }
+    if (data.alerts.isNotEmpty()) {
+        appendLine()
+        appendLine("Alerts & dispositions")
+        data.alerts.forEach { a ->
+            appendLine("${a.caption} — Status: ${a.status}   Reason: ${a.reason_code ?: "—"}")
+            appendLine("  Independent review: ${a.independent_review ?: "n/a"}")
+        }
+    }
+    if (data.audit.isNotEmpty()) {
+        appendLine()
+        appendLine("Audit trail")
+        data.audit.take(50).forEach { entry ->
+            appendLine("${entry.created_at} — ${entry.actor} — ${entry.action}")
+        }
+    }
+}
+
+private fun shareEvidenceText(context: Context, text: String) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+    }
+    context.startActivity(Intent.createChooser(intent, "Share evidence pack"))
 }
