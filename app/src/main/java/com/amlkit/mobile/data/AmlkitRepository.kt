@@ -14,6 +14,7 @@ import com.amlkit.mobile.data.dto.CustomerCreateResponse
 import com.amlkit.mobile.data.dto.CustomerDetailResponse
 import com.amlkit.mobile.data.dto.CustomersListResponse
 import com.amlkit.mobile.data.dto.DashboardResponse
+import com.amlkit.mobile.data.dto.DatasetsResponse
 import com.amlkit.mobile.data.dto.LoginRequest
 import com.amlkit.mobile.data.dto.NoteRequest
 import com.amlkit.mobile.data.dto.NoteResponse
@@ -160,6 +161,8 @@ class AmlkitRepository(
 
     // ---------------------------------------------------------------- admin
     suspend fun admin(): ApiResult<AdminResponse> = safeApiCall { api.admin() }
+
+    suspend fun datasets(): ApiResult<DatasetsResponse> = safeApiCall { api.datasets() }
 
     suspend fun setThreshold(threshold: Double?): ApiResult<ThresholdResponse> =
         safeApiCall { api.setThreshold(ThresholdRequest(threshold)) }

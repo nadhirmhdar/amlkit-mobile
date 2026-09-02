@@ -33,6 +33,7 @@ import androidx.lifecycle.viewModelScope
 import com.amlkit.mobile.data.AmlkitRepository
 import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.AdminResponse
+import com.amlkit.mobile.data.dto.DatasetDto
 import com.amlkit.mobile.data.dto.OperatorRowDto
 import com.amlkit.mobile.ui.common.AmlDialogFieldShape
 import com.amlkit.mobile.ui.common.AmlDialogShape
@@ -49,6 +50,7 @@ import com.amlkit.mobile.ui.common.StatusPill
 import com.amlkit.mobile.ui.common.amlDialogFieldColors
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.screenContentPadding
+import com.amlkit.mobile.ui.theme.AmlDanger
 import com.amlkit.mobile.ui.theme.AmlInk
 import com.amlkit.mobile.ui.theme.AmlInk2
 import com.amlkit.mobile.ui.theme.AmlInk3
@@ -63,6 +65,8 @@ class AdminViewModel(private val repository: AmlkitRepository) : ViewModel() {
     val state: StateFlow<Resource<AdminResponse>> = _state
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message
+    private val _datasets = MutableStateFlow<List<DatasetDto>>(emptyList())
+    val datasets: StateFlow<List<DatasetDto>> = _datasets
 
     fun load() {
         _state.value = Resource.Loading
@@ -70,6 +74,12 @@ class AdminViewModel(private val repository: AmlkitRepository) : ViewModel() {
             when (val result = repository.admin()) {
                 is ApiResult.Success -> _state.value = Resource.Content(result.data)
                 is ApiResult.Failure -> _state.value = Resource.Error(result.message)
+            }
+        }
+        viewModelScope.launch {
+            when (val result = repository.datasets()) {
+                is ApiResult.Success -> _datasets.value = result.data.datasets
+                is ApiResult.Failure -> Unit // the operator/threshold section above is the important half; a dataset-list fetch failure isn't worth its own error banner
             }
         }
     }
@@ -130,6 +140,7 @@ fun AdminScreen(repository: AmlkitRepository) {
     val viewModel = amlkitViewModel(repository) { AdminViewModel(it) }
     val state by viewModel.state.collectAsState()
     val message by viewModel.message.collectAsState()
+    val datasets by viewModel.datasets.collectAsState()
     LaunchedEffect(Unit) { viewModel.load() }
 
     var showCreateOperator by remember { mutableStateOf(false) }
@@ -181,6 +192,14 @@ fun AdminScreen(repository: AmlkitRepository) {
                             }
                         }
                         PillButton(text = "Refresh now", onClick = viewModel::refreshSanctions, tone = PillButtonTone.SECONDARY, height = 44.dp)
+                    }
+                }
+
+                if (datasets.isNotEmpty()) {
+                    item {
+                        SectionCard(title = "Data sources") {
+                            datasets.forEach { ds -> DatasetRow(ds) }
+                        }
                     }
                 }
 
@@ -268,6 +287,30 @@ fun AdminScreen(repository: AmlkitRepository) {
                 )
             },
             dismissButton = { PillButton(text = "Cancel", tone = PillButtonTone.SECONDARY, height = 44.dp, onClick = { deactivateTarget = null }) },
+        )
+    }
+}
+
+/** Publisher and licence for one screening data source -- surfaced so an
+ * MLRO can see where a match came from and whether its licence carries
+ * usage restrictions (a NON-COMMERCIAL licence is a real compliance fact,
+ * not a technicality, so it's flagged the same way the web app flags it). */
+@Composable
+private fun DatasetRow(dataset: DatasetDto) {
+    val nonCommercial = dataset.licence?.contains("NON-COMMERCIAL", ignoreCase = true) == true
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(text = dataset.title, style = MaterialTheme.typography.bodyMedium, color = AmlInk, modifier = Modifier.weight(1f))
+            Text(
+                text = dataset.entity_count?.let { "%,d".format(it) } ?: "—",
+                style = MaterialTheme.typography.bodySmall,
+                color = AmlInk3,
+            )
+        }
+        Text(
+            text = "${dataset.publisher ?: "Unknown publisher"} · ${dataset.licence ?: "licence unknown"}",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (nonCommercial) AmlDanger else AmlInk3,
         )
     }
 }
