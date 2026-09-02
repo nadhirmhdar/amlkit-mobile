@@ -9,15 +9,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -57,6 +66,10 @@ class RegisterOrgViewModel(private val repository: AmlkitRepository) : ViewModel
             _state.value = s.copy(error = "All fields are required.")
             return
         }
+        if (!EMAIL_PATTERN.matches(s.email.trim())) {
+            _state.value = s.copy(error = "Enter a valid email address.")
+            return
+        }
         if (s.password.length < 10) {
             _state.value = s.copy(error = "Password must be at least 10 characters.")
             return
@@ -74,6 +87,11 @@ class RegisterOrgViewModel(private val repository: AmlkitRepository) : ViewModel
     }
 }
 
+/** Basic shape check (one @, something on both sides, a dot in the domain)
+ * -- not a full RFC 5322 validator, just enough to catch an obviously
+ * malformed address before it reaches the server. */
+private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+
 @Composable
 fun RegisterOrgScreen(
     repository: AmlkitRepository,
@@ -82,6 +100,7 @@ fun RegisterOrgScreen(
 ) {
     val viewModel = amlkitViewModel(repository) { RegisterOrgViewModel(it) }
     val state by viewModel.state.collectAsState()
+    var passwordVisible by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -121,8 +140,17 @@ fun RegisterOrgScreen(
         OutlinedTextField(
             value = state.password, onValueChange = viewModel::onPasswordChange,
             label = { Text("Password (min. 10 characters)") }, singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        tint = AmlInk3,
+                    )
+                }
+            },
             modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
         )
 
