@@ -19,7 +19,7 @@ val localProperties = Properties().apply {
 
 android {
     namespace = "com.amlkit.mobile"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         // Matches the package name Google Play Console already locked in for
@@ -28,7 +28,12 @@ android {
         // a release under it.
         applicationId = "com.grovisoramlkit.myapp"
         minSdk = 26
-        targetSdk = 35
+        // Play Console rejects uploads below its current minimum target API
+        // level (36 as of this app's last upload attempt) -- see
+        // https://developer.android.com/google/play/requirements/target-sdk.
+        // That requirement moves forward roughly once a year, so this will
+        // need bumping again eventually.
+        targetSdk = 36
         // Overridable at build time: -PversionCode=4 -PversionName=1.0.3
         // (used by .github/workflows/android-release.yml, which dispatches
         // a real value per release; Play requires versionCode to strictly
