@@ -1,5 +1,8 @@
 package com.amlkit.mobile.ui.admin
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -21,12 +25,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amlkit.mobile.data.AmlkitRepository
 import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.AdminResponse
+import com.amlkit.mobile.data.dto.OperatorRowDto
 import com.amlkit.mobile.ui.common.AmlDialogFieldShape
 import com.amlkit.mobile.ui.common.AmlDialogShape
 import com.amlkit.mobile.ui.common.ErrorBanner
@@ -43,6 +50,9 @@ import com.amlkit.mobile.ui.common.amlDialogFieldColors
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.screenContentPadding
 import com.amlkit.mobile.ui.theme.AmlInk
+import com.amlkit.mobile.ui.theme.AmlInk2
+import com.amlkit.mobile.ui.theme.AmlInk3
+import com.amlkit.mobile.ui.theme.AmlLine
 import com.amlkit.mobile.ui.theme.AmlSurface
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -124,6 +134,8 @@ fun AdminScreen(repository: AmlkitRepository) {
 
     var showCreateOperator by remember { mutableStateOf(false) }
     var thresholdText by remember { mutableStateOf("") }
+    var resetPasswordTarget by remember { mutableStateOf<OperatorRowDto?>(null) }
+    var deactivateTarget by remember { mutableStateOf<OperatorRowDto?>(null) }
 
     when (val current = state) {
         is Resource.Loading -> FullScreenLoading(modifier = Modifier.fillMaxSize())
@@ -187,7 +199,22 @@ fun AdminScreen(repository: AmlkitRepository) {
                     SectionCard(title = op.name) {
                         Text(text = "${op.email} · ${op.role} · ${if (op.is_active == 1) "active" else "deactivated"}")
                         if (op.is_active == 1) {
-                            PillButton(text = "Deactivate", onClick = { viewModel.deactivateOperator(op.id) }, tone = PillButtonTone.SECONDARY, height = 40.dp)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                PillButton(
+                                    text = "Reset password",
+                                    onClick = { resetPasswordTarget = op },
+                                    tone = PillButtonTone.SECONDARY,
+                                    height = 40.dp,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                PillButton(
+                                    text = "Deactivate",
+                                    onClick = { deactivateTarget = op },
+                                    tone = PillButtonTone.DANGER,
+                                    height = 40.dp,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
                     }
                 }
@@ -202,6 +229,45 @@ fun AdminScreen(repository: AmlkitRepository) {
                 viewModel.createOperator(name, email, password, role)
                 showCreateOperator = false
             },
+        )
+    }
+
+    resetPasswordTarget?.let { op ->
+        ResetPasswordDialog(
+            operatorName = op.name,
+            onDismiss = { resetPasswordTarget = null },
+            onConfirm = { newPassword ->
+                viewModel.resetPassword(op.id, newPassword)
+                resetPasswordTarget = null
+            },
+        )
+    }
+
+    deactivateTarget?.let { op ->
+        AlertDialog(
+            onDismissRequest = { deactivateTarget = null },
+            containerColor = AmlSurface,
+            shape = AmlDialogShape,
+            title = { Text("Deactivate ${op.name}?", color = AmlInk, style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Text(
+                    "They will be signed out of every session immediately and won't be able to sign back in.",
+                    color = AmlInk2,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                PillButton(
+                    text = "Deactivate",
+                    tone = PillButtonTone.DANGER,
+                    height = 44.dp,
+                    onClick = {
+                        viewModel.deactivateOperator(op.id)
+                        deactivateTarget = null
+                    },
+                )
+            },
+            dismissButton = { PillButton(text = "Cancel", tone = PillButtonTone.SECONDARY, height = 44.dp, onClick = { deactivateTarget = null }) },
         )
     }
 }
@@ -222,12 +288,72 @@ private fun CreateOperatorDialog(onDismiss: () -> Unit, onConfirm: (String, Stri
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, colors = amlDialogFieldColors(), shape = AmlDialogFieldShape, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, colors = amlDialogFieldColors(), shape = AmlDialogFieldShape, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password (min. 10 chars)") }, colors = amlDialogFieldColors(), shape = AmlDialogFieldShape, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = role, onValueChange = { role = it }, label = { Text("Role (mlro/officer)") }, colors = amlDialogFieldColors(), shape = AmlDialogFieldShape, modifier = Modifier.fillMaxWidth())
+                Column {
+                    Text(text = "ROLE", style = MaterialTheme.typography.labelLarge, color = AmlInk3, modifier = Modifier.padding(bottom = 6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RoleChip(text = "Officer", selected = role == "officer", onClick = { role = "officer" })
+                        RoleChip(text = "MLRO", selected = role == "mlro", onClick = { role = "mlro" })
+                    }
+                }
             }
         },
         confirmButton = {
             PillButton(text = "Create", height = 44.dp, onClick = {
                 if (name.isNotBlank() && email.isNotBlank() && password.length >= 10) onConfirm(name, email, password, role)
+            })
+        },
+        dismissButton = { PillButton(text = "Cancel", tone = PillButtonTone.SECONDARY, height = 44.dp, onClick = onDismiss) },
+    )
+}
+
+/** Two mutually-exclusive choices, not free text -- the backend only ever
+ * accepts "officer" or "mlro" for a role, so the picker shouldn't allow
+ * anything else to be typed in the first place. */
+@Composable
+private fun RoleChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(50)
+    Row(
+        modifier = Modifier
+            .clip(shape)
+            .background(if (selected) AmlInk else Color.Transparent, shape)
+            .then(if (!selected) Modifier.border(BorderStroke(1.dp, AmlLine), shape) else Modifier)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) Color.White else AmlInk2,
+        )
+    }
+}
+
+@Composable
+private fun ResetPasswordDialog(operatorName: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var newPassword by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = AmlSurface,
+        shape = AmlDialogShape,
+        title = { Text("Reset password for $operatorName", color = AmlInk, style = MaterialTheme.typography.titleLarge) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "This immediately signs them out of every active session.",
+                    color = AmlInk2,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedTextField(
+                    value = newPassword, onValueChange = { newPassword = it },
+                    label = { Text("New password (min. 10 chars)") },
+                    colors = amlDialogFieldColors(), shape = AmlDialogFieldShape,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            PillButton(text = "Set password", height = 44.dp, onClick = {
+                if (newPassword.length >= 10) onConfirm(newPassword)
             })
         },
         dismissButton = { PillButton(text = "Cancel", tone = PillButtonTone.SECONDARY, height = 44.dp, onClick = onDismiss) },
