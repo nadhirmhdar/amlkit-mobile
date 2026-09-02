@@ -19,6 +19,7 @@ import com.amlkit.mobile.ui.alerts.AlertsScreen
 import com.amlkit.mobile.ui.audit.AuditScreen
 import com.amlkit.mobile.ui.auth.LoginScreen
 import com.amlkit.mobile.ui.auth.RegisterOrgScreen
+import com.amlkit.mobile.ui.auth.SetupScreen
 import com.amlkit.mobile.ui.customers.CustomerDetailScreen
 import com.amlkit.mobile.ui.customers.CustomerNewScreen
 import com.amlkit.mobile.ui.customers.CustomersListScreen
@@ -54,7 +55,7 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
     val currentRoute = backStackEntry?.destination?.route
 
     LaunchedEffect(token) {
-        if (token == null && currentRoute != Routes.LOGIN && currentRoute != Routes.REGISTER) {
+        if (token == null && currentRoute != Routes.LOGIN && currentRoute != Routes.REGISTER && currentRoute != Routes.SETUP) {
             navController.navigate(Routes.LOGIN) {
                 popUpTo(0) { inclusive = true }
                 launchSingleTop = true
@@ -63,7 +64,7 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
     }
 
     val isTopLevel = currentRoute in bottomTabRoutes
-    val isAuthRoute = currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER
+    val isAuthRoute = currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER || currentRoute == Routes.SETUP
     // Alerts renders its own header (queue vs. detail need different back
     // targets within the same route), so the shared Scaffold header is
     // suppressed for it rather than doubling up.
@@ -102,12 +103,20 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
                     repository = repository,
                     onLoggedIn = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
                     onGoToRegister = { navController.navigate(Routes.REGISTER) },
+                    onGoToSetup = { navController.navigate(Routes.SETUP) },
                 )
             }
             composable(Routes.REGISTER) {
                 RegisterOrgScreen(
                     repository = repository,
                     onRegistered = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
+                    onBackToLogin = { navController.popBackStack() },
+                )
+            }
+            composable(Routes.SETUP) {
+                SetupScreen(
+                    repository = repository,
+                    onSetupComplete = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
                     onBackToLogin = { navController.popBackStack() },
                 )
             }

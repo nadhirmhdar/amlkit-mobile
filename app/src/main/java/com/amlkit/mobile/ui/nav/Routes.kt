@@ -3,6 +3,7 @@ package com.amlkit.mobile.ui.nav
 object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
+    const val SETUP = "setup"
     const val HOME = "home"
     const val DASHBOARD = "dashboard"
     const val SCREENING = "screening"

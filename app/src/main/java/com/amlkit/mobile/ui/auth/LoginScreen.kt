@@ -77,6 +77,7 @@ fun LoginScreen(
     repository: AmlkitRepository,
     onLoggedIn: () -> Unit,
     onGoToRegister: () -> Unit,
+    onGoToSetup: () -> Unit,
 ) {
     val viewModel = amlkitViewModel(repository) { LoginViewModel(it) }
     val state by viewModel.state.collectAsState()
@@ -138,6 +139,11 @@ fun LoginScreen(
                 text = "Register a new organization",
                 onClick = onGoToRegister,
                 modifier = Modifier.padding(top = 16.dp),
+            )
+            TextLink(
+                text = "Have a setup code?",
+                onClick = onGoToSetup,
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
 

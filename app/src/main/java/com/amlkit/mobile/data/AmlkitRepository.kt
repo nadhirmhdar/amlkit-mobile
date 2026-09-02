@@ -33,6 +33,8 @@ import com.amlkit.mobile.data.dto.ReportsResponse
 import com.amlkit.mobile.data.dto.ReviewOutcomeDto
 import com.amlkit.mobile.data.dto.ScreenRequest
 import com.amlkit.mobile.data.dto.ScreenResponse
+import com.amlkit.mobile.data.dto.SetupCheckResponse
+import com.amlkit.mobile.data.dto.SetupSubmitRequest
 import com.amlkit.mobile.data.dto.SignatureRequest
 import com.amlkit.mobile.data.dto.SignatureResponse
 import com.amlkit.mobile.data.dto.ThresholdRequest
@@ -98,6 +100,12 @@ class AmlkitRepository(
         tokenStore.clear()
         return result
     }
+
+    suspend fun setupCheck(token: String): ApiResult<SetupCheckResponse> = safeApiCall { api.setupCheck(token) }
+
+    suspend fun setupSubmit(token: String, name: String, email: String, password: String): ApiResult<AuthResponse> =
+        safeApiCall { api.setupSubmit(SetupSubmitRequest(token, name, email, password)) }
+            .also { if (it is ApiResult.Success) persistSession(it.data) }
 
     private fun persistSession(auth: AuthResponse) {
         tokenStore.save(auth.token, auth.operator.name, auth.operator.role)
