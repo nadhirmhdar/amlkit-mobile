@@ -41,6 +41,7 @@ import com.amlkit.mobile.data.ApiResult
 import com.amlkit.mobile.data.dto.ScreenHitDto
 import com.amlkit.mobile.data.dto.ScreenResponse
 import com.amlkit.mobile.ui.common.CategoryTag
+import com.amlkit.mobile.ui.common.CountryAutocomplete
 import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.HairlineDivider
 import com.amlkit.mobile.ui.common.PillButton
@@ -278,27 +279,33 @@ private fun Long.toIsoDate(): String =
 
 /** The mockup's small rounded-pill "Nationality" / "Date of birth" fields
  * next to the name input -- optional context that narrows a screen, wired
- * to the real country/birth_date params ScreenRequest already accepts. */
+ * to the real country/birth_date params ScreenRequest already accepts.
+ * "Nationality" is backed by the shared [CountryAutocomplete], so onboarding
+ * picks a consistent country name instead of relying entirely on free
+ * text. */
 @Composable
 private fun InlinePillField(placeholder: String, value: String, onValueChange: (String) -> Unit) {
-    androidx.compose.foundation.text.BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodySmall.copy(color = AmlInk2),
-        cursorBrush = androidx.compose.ui.graphics.SolidColor(AmlInk),
-        decorationBox = { inner ->
-            Box(
-                modifier = Modifier
-                    .border(androidx.compose.foundation.BorderStroke(1.dp, AmlLine), androidx.compose.foundation.shape.RoundedCornerShape(50))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                contentAlignment = androidx.compose.ui.Alignment.CenterStart,
-            ) {
-                if (value.isEmpty()) {
-                    Text(text = placeholder, style = MaterialTheme.typography.bodySmall, color = AmlInk3)
+    CountryAutocomplete(value = value, onValueChange = onValueChange) { fieldModifier, onTextChange ->
+        androidx.compose.foundation.text.BasicTextField(
+            value = value,
+            onValueChange = onTextChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall.copy(color = AmlInk2),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(AmlInk),
+            modifier = fieldModifier,
+            decorationBox = { inner ->
+                Box(
+                    modifier = Modifier
+                        .border(androidx.compose.foundation.BorderStroke(1.dp, AmlLine), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    contentAlignment = androidx.compose.ui.Alignment.CenterStart,
+                ) {
+                    if (value.isEmpty()) {
+                        Text(text = placeholder, style = MaterialTheme.typography.bodySmall, color = AmlInk3)
+                    }
+                    inner()
                 }
-                inner()
-            }
-        },
-    )
+            },
+        )
+    }
 }
