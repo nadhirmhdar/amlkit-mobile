@@ -2,6 +2,7 @@ package com.amlkit.mobile.ui.screening
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,13 +16,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -128,7 +137,7 @@ fun ScreeningScreen(repository: AmlkitRepository) {
                         value = state.nationality,
                         onValueChange = viewModel::onNationalityChange,
                     )
-                    InlinePillField(
+                    InlineDatePillField(
                         placeholder = "Date of birth",
                         value = state.birthDate,
                         onValueChange = viewModel::onBirthDateChange,
@@ -208,6 +217,64 @@ private fun ScreeningHitRow(hit: ScreenHitDto) {
     }
     HairlineDivider(soft = true)
 }
+
+/** Same rounded-pill look as [InlinePillField], but for "Date of birth":
+ * tapping opens a Material date picker instead of the keyboard, so the
+ * value is always a well-formed ISO date (yyyy-MM-dd) for birth_date. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InlineDatePillField(placeholder: String, value: String, onValueChange: (String) -> Unit) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .border(androidx.compose.foundation.BorderStroke(1.dp, AmlLine), androidx.compose.foundation.shape.RoundedCornerShape(50))
+            .clickable { showPicker = true }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = androidx.compose.ui.Alignment.CenterStart,
+    ) {
+        Text(
+            text = value.ifEmpty { placeholder },
+            style = MaterialTheme.typography.bodySmall,
+            color = if (value.isEmpty()) AmlInk3 else AmlInk2,
+        )
+    }
+
+    if (showPicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = value.toEpochMillisOrNull(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        onValueChange(millis.toIsoDate())
+                    }
+                    showPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+            },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+/** Parses an ISO yyyy-MM-dd string (UTC midnight) to epoch millis for
+ * [rememberDatePickerState], or null if blank/unparsable. */
+private fun String.toEpochMillisOrNull(): Long? = try {
+    if (isBlank()) null else java.time.LocalDate.parse(this).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+} catch (e: Exception) {
+    null
+}
+
+/** Formats epoch millis (UTC midnight, as returned by the date picker) back
+ * to the ISO yyyy-MM-dd string the birth_date param expects. */
+private fun Long.toIsoDate(): String =
+    java.time.Instant.ofEpochMilli(this).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
 
 /** The mockup's small rounded-pill "Nationality" / "Date of birth" fields
  * next to the name input -- optional context that narrows a screen, wired
