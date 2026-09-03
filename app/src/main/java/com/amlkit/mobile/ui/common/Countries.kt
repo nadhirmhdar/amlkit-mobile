@@ -1,5 +1,18 @@
 package com.amlkit.mobile.ui.common
 
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+
 /** ISO 3166-1 country names, used to power the Nationality picker on
  * customer onboarding and ad-hoc screening -- a fixed list keeps KYC
  * records consistent instead of free-text (typos, "UAE" vs "Emirati",
@@ -46,4 +59,61 @@ val Countries: List<String> = listOf(
 fun filterCountries(query: String): List<String> {
     if (query.isBlank()) return Countries
     return Countries.filter { it.contains(query, ignoreCase = true) }
+}
+
+/** Shared Nationality autocomplete used by both customer onboarding and
+ * ad-hoc screening: wraps the caller's own styled text field (passed as
+ * [content]) in an [ExposedDropdownMenuBox] backed by [Countries]. This is
+ * the one place the suggestion list, menu-anchor wiring, and selection
+ * enforcement live, so a future fix (result cap, debouncing, ...) only
+ * needs to change here instead of at every call site.
+ *
+ * Typed text that doesn't exactly match a [Countries] entry is discarded
+ * once the menu closes -- [onValueChange] only ever settles on a value
+ * that's actually in the list (or blank), which is the whole point of a
+ * fixed country list: it rules out the typos/casing/synonym drift
+ * ("UAE" vs "Emirati") free text would otherwise let through.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CountryAutocomplete(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable (fieldModifier: Modifier, onTextChange: (String) -> Unit) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val suggestions = remember(value, expanded) {
+        if (expanded) filterCountries(value).take(50) else emptyList()
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded && suggestions.isNotEmpty(),
+        onExpandedChange = { expanded = it },
+        modifier = modifier,
+    ) {
+        content(Modifier.menuAnchor(MenuAnchorType.PrimaryEditable, true)) {
+            onValueChange(it)
+            expanded = true
+        }
+        ExposedDropdownMenu(
+            expanded = expanded && suggestions.isNotEmpty(),
+            onDismissRequest = {
+                expanded = false
+                if (value.isNotBlank() && Countries.none { it.equals(value, ignoreCase = true) }) {
+                    onValueChange("")
+                }
+            },
+        ) {
+            suggestions.forEach { country ->
+                DropdownMenuItem(
+                    text = { Text(country) },
+                    onClick = {
+                        onValueChange(country)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
 }
