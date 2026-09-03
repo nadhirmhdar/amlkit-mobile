@@ -51,6 +51,12 @@ data class LoginUiState(
     val password: String = "",
     val loading: Boolean = false,
     val error: String? = null,
+    // Set only when login fails specifically because the account's email
+    // was never verified (see auth.login()'s guard on the server) -- lets
+    // the screen offer a resend instead of just showing a dead-end error.
+    val unverifiedEmail: String? = null,
+    val resendInFlight: Boolean = false,
+    val resendMessage: String? = null,
 )
 
 class LoginViewModel(private val repository: AmlkitRepository) : ViewModel() {
@@ -66,7 +72,7 @@ class LoginViewModel(private val repository: AmlkitRepository) : ViewModel() {
             _state.value = current.copy(error = "Enter your email and password.")
             return
         }
-        _state.value = current.copy(loading = true, error = null)
+        _state.value = current.copy(loading = true, error = null, unverifiedEmail = null, resendMessage = null)
         viewModelScope.launch {
             when (val result = repository.login(current.email.trim(), current.password)) {
                 is com.amlkit.mobile.data.ApiResult.Success -> {
@@ -74,9 +80,27 @@ class LoginViewModel(private val repository: AmlkitRepository) : ViewModel() {
                     onSuccess()
                 }
                 is com.amlkit.mobile.data.ApiResult.Failure -> {
-                    _state.value = _state.value.copy(loading = false, error = result.message)
+                    val unverified = result.message.contains("verify your email", ignoreCase = true)
+                    _state.value = _state.value.copy(
+                        loading = false,
+                        error = result.message,
+                        unverifiedEmail = if (unverified) current.email.trim() else null,
+                    )
                 }
             }
+        }
+    }
+
+    fun resend() {
+        val email = _state.value.unverifiedEmail ?: return
+        _state.value = _state.value.copy(resendInFlight = true, resendMessage = null)
+        viewModelScope.launch {
+            val result = repository.resendVerification(email)
+            val message = when (result) {
+                is com.amlkit.mobile.data.ApiResult.Success -> result.data.message
+                is com.amlkit.mobile.data.ApiResult.Failure -> result.message
+            }
+            _state.value = _state.value.copy(resendInFlight = false, resendMessage = message)
         }
     }
 }
@@ -118,6 +142,22 @@ fun LoginScreen(
 
             if (state.error != null) {
                 ErrorBanner(message = state.error!!, modifier = Modifier.padding(bottom = 12.dp))
+            }
+            if (state.unverifiedEmail != null) {
+                if (state.resendMessage != null) {
+                    Text(
+                        text = state.resendMessage!!,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AmlInk3,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                } else {
+                    TextLink(
+                        text = if (state.resendInFlight) "Sending…" else "Resend verification email",
+                        onClick = viewModel::resend,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                }
             }
 
             UnderlineField(

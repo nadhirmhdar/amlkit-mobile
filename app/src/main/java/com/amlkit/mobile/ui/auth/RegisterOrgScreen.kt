@@ -49,6 +49,13 @@ data class RegisterOrgUiState(
     val password: String = "",
     val loading: Boolean = false,
     val error: String? = null,
+    // Non-null once registration succeeds: the account exists but has no
+    // usable session yet (see AmlkitRepository.registerOrganization) until
+    // the link mailed to this address is opened, so the screen switches to
+    // a "check your email" panel instead of navigating anywhere.
+    val registeredEmail: String? = null,
+    val resendInFlight: Boolean = false,
+    val resendMessage: String? = null,
 )
 
 class RegisterOrgViewModel(private val repository: AmlkitRepository) : ViewModel() {
@@ -60,7 +67,7 @@ class RegisterOrgViewModel(private val repository: AmlkitRepository) : ViewModel
     fun onEmailChange(v: String) { _state.value = _state.value.copy(email = v, error = null) }
     fun onPasswordChange(v: String) { _state.value = _state.value.copy(password = v, error = null) }
 
-    fun register(onSuccess: () -> Unit) {
+    fun register() {
         val s = _state.value
         if (s.orgName.isBlank() || s.name.isBlank() || s.email.isBlank()) {
             _state.value = s.copy(error = "All fields are required.")
@@ -78,11 +85,23 @@ class RegisterOrgViewModel(private val repository: AmlkitRepository) : ViewModel
         viewModelScope.launch {
             when (val result = repository.registerOrganization(s.orgName.trim(), s.name.trim(), s.email.trim(), s.password)) {
                 is ApiResult.Success -> {
-                    _state.value = _state.value.copy(loading = false)
-                    onSuccess()
+                    _state.value = _state.value.copy(loading = false, registeredEmail = result.data.email)
                 }
                 is ApiResult.Failure -> _state.value = _state.value.copy(loading = false, error = result.message)
             }
+        }
+    }
+
+    fun resend() {
+        val email = _state.value.registeredEmail ?: return
+        _state.value = _state.value.copy(resendInFlight = true, resendMessage = null)
+        viewModelScope.launch {
+            val result = repository.resendVerification(email)
+            val message = when (result) {
+                is ApiResult.Success -> result.data.message
+                is ApiResult.Failure -> result.message
+            }
+            _state.value = _state.value.copy(resendInFlight = false, resendMessage = message)
         }
     }
 }
@@ -95,12 +114,22 @@ private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 @Composable
 fun RegisterOrgScreen(
     repository: AmlkitRepository,
-    onRegistered: () -> Unit,
     onBackToLogin: () -> Unit,
 ) {
     val viewModel = amlkitViewModel(repository) { RegisterOrgViewModel(it) }
     val state by viewModel.state.collectAsState()
     var passwordVisible by remember { mutableStateOf(false) }
+
+    if (state.registeredEmail != null) {
+        CheckYourEmailPanel(
+            email = state.registeredEmail!!,
+            resendInFlight = state.resendInFlight,
+            resendMessage = state.resendMessage,
+            onResend = viewModel::resend,
+            onBackToLogin = onBackToLogin,
+        )
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -156,12 +185,63 @@ fun RegisterOrgScreen(
 
         PillButton(
             text = "Register",
-            onClick = { viewModel.register(onRegistered) },
+            onClick = { viewModel.register() },
             enabled = !state.loading,
             loading = state.loading,
             modifier = Modifier.fillMaxWidth(),
         )
 
         TextLink(text = "Already have an account? Sign in", onClick = onBackToLogin, modifier = Modifier.padding(top = 16.dp))
+    }
+}
+
+/** Shown after a successful registration in place of the form. There is no
+ * session to navigate into yet -- the account only becomes usable once the
+ * emailed link is opened (see /verify-email, handled by the amlkit web app
+ * since it works from any browser regardless of whether this app is
+ * installed), so this screen's job is just to point the user at their
+ * inbox and offer a resend rather than pretending sign-in already happened. */
+@Composable
+private fun CheckYourEmailPanel(
+    email: String,
+    resendInFlight: Boolean,
+    resendMessage: String?,
+    onResend: () -> Unit,
+    onBackToLogin: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(text = "Check your email", style = MaterialTheme.typography.displaySmall, color = AmlInk)
+        Text(
+            text = "We sent a verification link to $email. Open it on any device to " +
+                "activate your account, then come back here and sign in.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = AmlInk3,
+            modifier = Modifier.padding(bottom = 20.dp, top = 4.dp),
+        )
+
+        if (resendMessage != null) {
+            Text(
+                text = resendMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = AmlInk3,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+        }
+
+        PillButton(
+            text = "Resend verification email",
+            onClick = onResend,
+            enabled = !resendInFlight,
+            loading = resendInFlight,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        TextLink(text = "Back to sign in", onClick = onBackToLogin, modifier = Modifier.padding(top = 16.dp))
     }
 }

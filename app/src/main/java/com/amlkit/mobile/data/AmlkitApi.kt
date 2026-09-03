@@ -16,6 +16,7 @@ import com.amlkit.mobile.data.dto.DashboardResponse
 import com.amlkit.mobile.data.dto.DatasetsResponse
 import com.amlkit.mobile.data.dto.LoginRequest
 import com.amlkit.mobile.data.dto.MeResponse
+import com.amlkit.mobile.data.dto.MessageResponse
 import com.amlkit.mobile.data.dto.NoteRequest
 import com.amlkit.mobile.data.dto.NoteResponse
 import com.amlkit.mobile.data.dto.OkResponse
@@ -26,6 +27,7 @@ import com.amlkit.mobile.data.dto.PasswordResetRequest
 import com.amlkit.mobile.data.dto.ReasonCodesResponse
 import com.amlkit.mobile.data.dto.RefreshResultDto
 import com.amlkit.mobile.data.dto.RegisterOrgRequest
+import com.amlkit.mobile.data.dto.RegisterOrgResponse
 import com.amlkit.mobile.data.dto.ReportDetailResponse
 import com.amlkit.mobile.data.dto.ReportSaveRequest
 import com.amlkit.mobile.data.dto.ReportSaveResponse
@@ -35,6 +37,7 @@ import com.amlkit.mobile.data.dto.ScreenRequest
 import com.amlkit.mobile.data.dto.ScreenResponse
 import com.amlkit.mobile.data.dto.SetupCheckResponse
 import com.amlkit.mobile.data.dto.SetupSubmitRequest
+import com.amlkit.mobile.data.dto.ResendVerificationRequest
 import com.amlkit.mobile.data.dto.SignatureRequest
 import com.amlkit.mobile.data.dto.SignatureResponse
 import com.amlkit.mobile.data.dto.ThresholdRequest
@@ -44,6 +47,7 @@ import com.amlkit.mobile.data.dto.TransactionResponse
 import com.amlkit.mobile.data.dto.TxnAlertDispositionRequest
 import com.amlkit.mobile.data.dto.UboAddRequest
 import com.amlkit.mobile.data.dto.UboAddResponse
+import com.amlkit.mobile.data.dto.VerifyEmailRequest
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -71,7 +75,13 @@ interface AmlkitApi {
     suspend fun me(): Response<MeResponse>
 
     @POST("api/v1/auth/register-organization")
-    suspend fun registerOrganization(@Body body: RegisterOrgRequest): Response<AuthResponse>
+    suspend fun registerOrganization(@Body body: RegisterOrgRequest): Response<RegisterOrgResponse>
+
+    @POST("api/v1/auth/verify-email")
+    suspend fun verifyEmail(@Body body: VerifyEmailRequest): Response<AuthResponse>
+
+    @POST("api/v1/auth/resend-verification")
+    suspend fun resendVerification(@Body body: ResendVerificationRequest): Response<MessageResponse>
 
     @GET("api/v1/auth/setup")
     suspend fun setupCheck(@Query("token") token: String): Response<SetupCheckResponse>

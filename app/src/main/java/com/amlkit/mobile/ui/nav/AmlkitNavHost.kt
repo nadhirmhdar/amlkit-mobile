@@ -109,7 +109,6 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
             composable(Routes.REGISTER) {
                 RegisterOrgScreen(
                     repository = repository,
-                    onRegistered = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
                     onBackToLogin = { navController.popBackStack() },
                 )
             }
