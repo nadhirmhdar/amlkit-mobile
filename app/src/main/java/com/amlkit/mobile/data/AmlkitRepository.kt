@@ -26,6 +26,7 @@ import com.amlkit.mobile.data.dto.PasswordResetRequest
 import com.amlkit.mobile.data.dto.ReasonCodesResponse
 import com.amlkit.mobile.data.dto.RefreshResultDto
 import com.amlkit.mobile.data.dto.RegisterOrgRequest
+import com.amlkit.mobile.data.dto.RegisterOrgResponse
 import com.amlkit.mobile.data.dto.ReportDetailResponse
 import com.amlkit.mobile.data.dto.ReportSaveRequest
 import com.amlkit.mobile.data.dto.ReportSaveResponse
@@ -33,8 +34,11 @@ import com.amlkit.mobile.data.dto.ReportsResponse
 import com.amlkit.mobile.data.dto.ReviewOutcomeDto
 import com.amlkit.mobile.data.dto.ScreenRequest
 import com.amlkit.mobile.data.dto.ScreenResponse
+import com.amlkit.mobile.data.dto.MessageResponse
+import com.amlkit.mobile.data.dto.ResendVerificationRequest
 import com.amlkit.mobile.data.dto.SetupCheckResponse
 import com.amlkit.mobile.data.dto.SetupSubmitRequest
+import com.amlkit.mobile.data.dto.VerifyEmailRequest
 import com.amlkit.mobile.data.dto.SignatureRequest
 import com.amlkit.mobile.data.dto.SignatureResponse
 import com.amlkit.mobile.data.dto.ThresholdRequest
@@ -91,9 +95,17 @@ class AmlkitRepository(
         safeApiCall { api.login(LoginRequest(email, password)) }
             .also { if (it is ApiResult.Success) persistSession(it.data) }
 
-    suspend fun registerOrganization(orgName: String, name: String, email: String, password: String): ApiResult<AuthResponse> =
+    // No persistSession here: the account isn't usable yet -- the response
+    // carries no token, only a "check your email" status. See verifyEmail.
+    suspend fun registerOrganization(orgName: String, name: String, email: String, password: String): ApiResult<RegisterOrgResponse> =
         safeApiCall { api.registerOrganization(RegisterOrgRequest(orgName, name, email, password)) }
+
+    suspend fun verifyEmail(token: String): ApiResult<AuthResponse> =
+        safeApiCall { api.verifyEmail(VerifyEmailRequest(token)) }
             .also { if (it is ApiResult.Success) persistSession(it.data) }
+
+    suspend fun resendVerification(email: String): ApiResult<MessageResponse> =
+        safeApiCall { api.resendVerification(ResendVerificationRequest(email)) }
 
     suspend fun logout(): ApiResult<OkResponse> {
         val result = safeApiCall { api.logout() }

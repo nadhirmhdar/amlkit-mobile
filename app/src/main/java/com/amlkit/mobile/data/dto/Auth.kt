@@ -28,6 +28,28 @@ data class RegisterOrgRequest(
     val password: String,
 )
 
+/** The account is created but not yet usable -- no `token` here, unlike
+ * every other auth response. It only becomes usable once the link sent to
+ * `email` is opened (see /verify-email); [dev_verification_token] is only
+ * ever present when the server has no mail server configured (local dev /
+ * CI), so registration stays testable without one. */
+@Serializable
+data class RegisterOrgResponse(
+    val status: String,
+    val message: String,
+    val email: String,
+    val dev_verification_token: String? = null,
+)
+
+@Serializable
+data class VerifyEmailRequest(val token: String)
+
+@Serializable
+data class ResendVerificationRequest(val email: String)
+
+@Serializable
+data class MessageResponse(val message: String)
+
 @Serializable
 data class SetupCheckResponse(val valid: Boolean, val org_name: String? = null)
 
