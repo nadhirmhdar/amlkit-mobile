@@ -256,4 +256,19 @@ data class PassportScanResponse(
     val id_type: String? = null,
     val authenticity: JsonElement? = null,
     val expiry_check: JsonElement? = null,
+    val image_quality: JsonElement? = null,
+)
+
+@Serializable
+data class EmiratesIdScanResponse(
+    val full_name: String? = null,
+    val id_number: String? = null,
+    val birth_date: String? = null,
+    val expiry_date: String? = null,
+    val id_type: String? = null,
+    val field_confidence: JsonElement? = null,
+    val authenticity: JsonElement? = null,
+    val expiry_check: JsonElement? = null,
+    val id_validation: JsonElement? = null,
+    val image_quality: JsonElement? = null,
 )

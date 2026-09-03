@@ -24,6 +24,7 @@ import com.amlkit.mobile.ui.customers.CustomerDetailScreen
 import com.amlkit.mobile.ui.customers.CustomerNewScreen
 import com.amlkit.mobile.ui.customers.CustomersListScreen
 import com.amlkit.mobile.ui.customers.EvidenceScreen
+import com.amlkit.mobile.ui.customers.ScanPrefill
 import com.amlkit.mobile.ui.dashboard.DashboardScreen
 import com.amlkit.mobile.ui.home.AboutScreen
 import com.amlkit.mobile.ui.home.HomeScreen
@@ -31,6 +32,8 @@ import com.amlkit.mobile.ui.more.MoreScreen
 import com.amlkit.mobile.ui.reports.ReportBuilderScreen
 import com.amlkit.mobile.ui.reports.ReportDetailScreen
 import com.amlkit.mobile.ui.reports.ReportsListScreen
+import com.amlkit.mobile.ui.scan.DocType
+import com.amlkit.mobile.ui.scan.DocumentScanScreen
 import com.amlkit.mobile.ui.screening.ScreeningScreen
 import kotlinx.coroutines.launch
 
@@ -44,6 +47,7 @@ private val screenTitles = mapOf(
     Routes.REPORT_NEW to "Reports",
     Routes.REPORT_DETAIL to "Reports",
     Routes.ABOUT to "Home",
+    Routes.DOCUMENT_SCAN to "Customers",
 )
 
 @Composable
@@ -142,10 +146,47 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
                     onNewCustomer = { navController.navigate(Routes.CUSTOMER_NEW) },
                 )
             }
-            composable(Routes.CUSTOMER_NEW) {
-                CustomerNewScreen(repository = repository, onCreated = { id ->
-                    navController.navigate(Routes.customerDetail(id)) { popUpTo(Routes.CUSTOMERS) }
-                })
+            composable(Routes.CUSTOMER_NEW) { entry ->
+                val prefillName by entry.savedStateHandle.getStateFlow<String?>("scan_full_name", null).collectAsState()
+                val prefillNationality by entry.savedStateHandle.getStateFlow<String?>("scan_nationality", null).collectAsState()
+                val prefillBirthDate by entry.savedStateHandle.getStateFlow<String?>("scan_birth_date", null).collectAsState()
+                val scanPrefill = if (prefillName != null || prefillNationality != null || prefillBirthDate != null) {
+                    ScanPrefill(prefillName, prefillNationality, prefillBirthDate)
+                } else {
+                    null
+                }
+                CustomerNewScreen(
+                    repository = repository,
+                    onCreated = { id ->
+                        navController.navigate(Routes.customerDetail(id)) { popUpTo(Routes.CUSTOMERS) }
+                    },
+                    scanPrefill = scanPrefill,
+                    onScanPrefillConsumed = {
+                        entry.savedStateHandle["scan_full_name"] = null
+                        entry.savedStateHandle["scan_nationality"] = null
+                        entry.savedStateHandle["scan_birth_date"] = null
+                    },
+                    onScanPassport = { navController.navigate(Routes.documentScan(DocType.PASSPORT.routeArg)) },
+                    onScanEmiratesId = { navController.navigate(Routes.documentScan(DocType.EMIRATES_ID.routeArg)) },
+                )
+            }
+            composable(
+                route = Routes.DOCUMENT_SCAN,
+                arguments = listOf(androidx.navigation.navArgument("docType") { type = androidx.navigation.NavType.StringType }),
+            ) { entry ->
+                val docType = DocType.fromRouteArg(entry.arguments?.getString("docType"))
+                DocumentScanScreen(
+                    repository = repository,
+                    docType = docType,
+                    onUseData = { result ->
+                        navController.previousBackStackEntry?.savedStateHandle?.apply {
+                            set("scan_full_name", result.fullName)
+                            set("scan_nationality", result.nationality)
+                            set("scan_birth_date", result.birthDate)
+                        }
+                        navController.popBackStack()
+                    },
+                )
             }
             composable(
                 route = Routes.CUSTOMER_DETAIL,

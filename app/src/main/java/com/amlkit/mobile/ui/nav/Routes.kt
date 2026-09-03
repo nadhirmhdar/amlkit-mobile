@@ -10,6 +10,7 @@ object Routes {
     const val CUSTOMERS = "customers"
     const val CUSTOMER_NEW = "customers/new"
     const val CUSTOMER_DETAIL = "customers/{customerId}"
+    const val DOCUMENT_SCAN = "scan/{docType}"
     const val ALERTS = "alerts"
     const val AUDIT = "audit"
     const val ADMIN = "admin"
@@ -21,4 +22,5 @@ object Routes {
 
     fun customerDetail(customerId: Int) = "customers/$customerId"
     fun reportDetail(reportId: Int) = "reports/$reportId"
+    fun documentScan(docType: String) = "scan/$docType"
 }
