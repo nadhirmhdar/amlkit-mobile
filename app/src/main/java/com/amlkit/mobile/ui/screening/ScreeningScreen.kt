@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -49,6 +51,7 @@ import com.amlkit.mobile.ui.common.ScreenEyebrow
 import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.categoryTone
+import com.amlkit.mobile.ui.common.filterCountries
 import com.amlkit.mobile.ui.common.screenContentPadding
 import com.amlkit.mobile.ui.theme.AmlInk
 import com.amlkit.mobile.ui.theme.AmlInk2
@@ -278,27 +281,53 @@ private fun Long.toIsoDate(): String =
 
 /** The mockup's small rounded-pill "Nationality" / "Date of birth" fields
  * next to the name input -- optional context that narrows a screen, wired
- * to the real country/birth_date params ScreenRequest already accepts. */
+ * to the real country/birth_date params ScreenRequest already accepts.
+ * "Nationality" additionally suggests matches from [filterCountries] as the
+ * user types, so onboarding picks a consistent country name instead of
+ * relying entirely on free text. */
 @Composable
 private fun InlinePillField(placeholder: String, value: String, onValueChange: (String) -> Unit) {
-    androidx.compose.foundation.text.BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodySmall.copy(color = AmlInk2),
-        cursorBrush = androidx.compose.ui.graphics.SolidColor(AmlInk),
-        decorationBox = { inner ->
-            Box(
-                modifier = Modifier
-                    .border(androidx.compose.foundation.BorderStroke(1.dp, AmlLine), androidx.compose.foundation.shape.RoundedCornerShape(50))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                contentAlignment = androidx.compose.ui.Alignment.CenterStart,
-            ) {
-                if (value.isEmpty()) {
-                    Text(text = placeholder, style = MaterialTheme.typography.bodySmall, color = AmlInk3)
+    var menuExpanded by remember { mutableStateOf(false) }
+    val suggestions = remember(value, menuExpanded) {
+        if (menuExpanded) filterCountries(value).take(50) else emptyList()
+    }
+    Box {
+        androidx.compose.foundation.text.BasicTextField(
+            value = value,
+            onValueChange = {
+                onValueChange(it)
+                menuExpanded = true
+            },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall.copy(color = AmlInk2),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(AmlInk),
+            decorationBox = { inner ->
+                Box(
+                    modifier = Modifier
+                        .border(androidx.compose.foundation.BorderStroke(1.dp, AmlLine), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    contentAlignment = androidx.compose.ui.Alignment.CenterStart,
+                ) {
+                    if (value.isEmpty()) {
+                        Text(text = placeholder, style = MaterialTheme.typography.bodySmall, color = AmlInk3)
+                    }
+                    inner()
                 }
-                inner()
+            },
+        )
+        DropdownMenu(
+            expanded = menuExpanded && suggestions.isNotEmpty(),
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            suggestions.forEach { country ->
+                DropdownMenuItem(
+                    text = { Text(country) },
+                    onClick = {
+                        onValueChange(country)
+                        menuExpanded = false
+                    },
+                )
             }
-        },
-    )
+        }
+    }
 }
