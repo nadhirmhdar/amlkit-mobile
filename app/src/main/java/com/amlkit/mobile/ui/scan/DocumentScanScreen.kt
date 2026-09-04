@@ -18,8 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +48,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import java.io.File
 
@@ -77,12 +78,16 @@ data class DocumentScanResult(
     val expiryDate: String?,
     val expiryFlags: List<String>,
     val qualityFlags: List<String>,
+    val authenticityFlags: List<String>,
 )
 
 private fun JsonElement?.asFlags(): List<String> =
     ((this as? JsonObject)?.get("flags") as? JsonArray)
         ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
         ?: emptyList()
+
+private fun JsonElement?.boolField(key: String): Boolean? =
+    ((this as? JsonObject)?.get(key) as? JsonPrimitive)?.booleanOrNull
 
 private fun PassportScanResponse.toScanResult() = DocumentScanResult(
     fullName = full_name,
@@ -92,6 +97,9 @@ private fun PassportScanResponse.toScanResult() = DocumentScanResult(
     expiryDate = expiry_date,
     expiryFlags = expiry_check.asFlags(),
     qualityFlags = image_quality.asFlags(),
+    // authenticity is the MRZ checksum signal -- surfacing it here is the
+    // whole point of Tier 1 IDV; a checksum failure otherwise scans clean.
+    authenticityFlags = authenticity.asFlags(),
 )
 
 private fun EmiratesIdScanResponse.toScanResult() = DocumentScanResult(
@@ -102,6 +110,12 @@ private fun EmiratesIdScanResponse.toScanResult() = DocumentScanResult(
     expiryDate = expiry_date,
     expiryFlags = expiry_check.asFlags(),
     qualityFlags = image_quality.asFlags(),
+    // id_validation.flags always includes an informational "check digit not
+    // verified" disclaimer, unlike passport's authenticity.flags which is
+    // only non-empty on an actual checksum failure -- only surface it here
+    // when the ID number genuinely failed format validation, or a clean
+    // scan would show a warning banner for no real problem.
+    authenticityFlags = if (id_validation.boolField("valid_format") == false) id_validation.asFlags() else emptyList(),
 )
 
 data class DocumentScanUiState(
@@ -119,7 +133,13 @@ class DocumentScanViewModel(
     val state: StateFlow<DocumentScanUiState> = _state
 
     fun onImageSelected(file: File) {
+        val previous = _state.value.imageFile
+        if (previous != null && previous != file) previous.delete()
         _state.value = _state.value.copy(imageFile = file, result = null, error = null)
+    }
+
+    fun onCameraPermissionDenied() {
+        _state.value = _state.value.copy(error = "Camera permission was denied. Choose from gallery instead, or allow camera access in system settings.")
     }
 
     fun scan() {
@@ -141,6 +161,11 @@ class DocumentScanViewModel(
                 is ApiResult.Failure -> _state.value = _state.value.copy(loading = false, error = outcome.message)
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        _state.value.imageFile?.delete()
     }
 }
 
@@ -179,17 +204,23 @@ fun DocumentScanScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var pendingCameraFile by remember { mutableStateOf<File?>(null) }
+    // The path (not the File itself) survives process death while the
+    // external camera app is in the foreground -- a well-documented risk
+    // with TakePicture -- so the callback can still recover the target file
+    // if this app's process was killed and restarted in between.
+    var pendingCameraPath by rememberSaveable { mutableStateOf<String?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        val file = pendingCameraFile
-        if (success && file != null) viewModel.onImageSelected(file)
+        val path = pendingCameraPath
+        if (success && path != null) viewModel.onImageSelected(File(path))
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
             val (file, uri) = createCameraTarget(context, docType)
-            pendingCameraFile = file
+            pendingCameraPath = file.absolutePath
             cameraLauncher.launch(uri)
+        } else {
+            viewModel.onCameraPermissionDenied()
         }
     }
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -272,7 +303,7 @@ private fun ScanResultCard(result: DocumentScanResult) {
         result.idNumber?.let { LabeledValue("ID number", it) }
         result.birthDate?.let { LabeledValue("Date of birth", it) }
         result.expiryDate?.let { LabeledValue("Expiry date", it) }
-        (result.expiryFlags + result.qualityFlags).forEach { flag -> ErrorBanner(message = flag) }
+        (result.authenticityFlags + result.expiryFlags + result.qualityFlags).forEach { flag -> ErrorBanner(message = flag) }
     }
 }
 

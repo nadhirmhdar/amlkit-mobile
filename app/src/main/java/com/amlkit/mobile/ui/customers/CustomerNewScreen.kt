@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -61,6 +63,11 @@ data class CustomerNewUiState(
  * over here). */
 data class ScanPrefill(val fullName: String?, val nationality: String?, val birthDate: String?)
 
+/** Loose enough to accept a real calendar date without a full parse --
+ * good enough to reject an obviously wrong format (e.g. "04/09/2026")
+ * typed by hand before it reaches the server as a raw string. */
+private val ISO_DATE_PATTERN = Regex("^\\d{4}-\\d{2}-\\d{2}$")
+
 class CustomerNewViewModel(private val repository: AmlkitRepository) : ViewModel() {
     private val _state = MutableStateFlow(CustomerNewUiState())
     val state: StateFlow<CustomerNewUiState> = _state
@@ -93,6 +100,10 @@ class CustomerNewViewModel(private val repository: AmlkitRepository) : ViewModel
         val s = _state.value
         if (s.reference.isBlank() || s.fullName.isBlank()) {
             _state.value = s.copy(error = "Reference and full name are required.")
+            return
+        }
+        if (s.birthDate.isNotBlank() && !ISO_DATE_PATTERN.matches(s.birthDate.trim())) {
+            _state.value = s.copy(error = "Date of birth must be in YYYY-MM-DD format.")
             return
         }
         _state.value = s.copy(loading = true, error = null)
@@ -136,8 +147,15 @@ fun CustomerNewScreen(
     val viewModel = amlkitViewModel(repository) { CustomerNewViewModel(it) }
     val state by viewModel.state.collectAsState()
 
+    // onScanPrefillConsumed clears its three SavedStateHandle keys one at a
+    // time, each of which is itself an observed state change -- without this
+    // guard, every intermediate partial-null combination would re-trigger
+    // this effect and reapply an already-consumed (and possibly since
+    // hand-edited) prefill.
+    var scanPrefillConsumed by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(scanPrefill) {
-        if (scanPrefill != null) {
+        if (scanPrefill != null && !scanPrefillConsumed) {
+            scanPrefillConsumed = true
             viewModel.applyScanPrefill(scanPrefill)
             onScanPrefillConsumed()
         }
