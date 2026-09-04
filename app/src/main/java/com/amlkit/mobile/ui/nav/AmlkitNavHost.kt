@@ -20,6 +20,7 @@ import com.amlkit.mobile.ui.audit.AuditScreen
 import com.amlkit.mobile.ui.auth.LoginScreen
 import com.amlkit.mobile.ui.auth.RegisterOrgScreen
 import com.amlkit.mobile.ui.auth.SetupScreen
+import com.amlkit.mobile.ui.auth.VerifyEmailScreen
 import com.amlkit.mobile.ui.customers.CustomerDetailScreen
 import com.amlkit.mobile.ui.customers.CustomerNewScreen
 import com.amlkit.mobile.ui.customers.CustomersListScreen
@@ -58,8 +59,10 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
+    val preAuthRoutes = setOf(Routes.LOGIN, Routes.REGISTER, Routes.SETUP, Routes.VERIFY_EMAIL)
+
     LaunchedEffect(token) {
-        if (token == null && currentRoute != Routes.LOGIN && currentRoute != Routes.REGISTER && currentRoute != Routes.SETUP) {
+        if (token == null && currentRoute !in preAuthRoutes) {
             navController.navigate(Routes.LOGIN) {
                 popUpTo(0) { inclusive = true }
                 launchSingleTop = true
@@ -68,7 +71,7 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
     }
 
     val isTopLevel = currentRoute in bottomTabRoutes
-    val isAuthRoute = currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER || currentRoute == Routes.SETUP
+    val isAuthRoute = currentRoute in preAuthRoutes
     // Alerts renders its own header (queue vs. detail need different back
     // targets within the same route), so the shared Scaffold header is
     // suppressed for it rather than doubling up.
@@ -102,17 +105,32 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
             startDestination = if (token != null) Routes.HOME else Routes.LOGIN,
             modifier = Modifier.padding(padding),
         ) {
-            composable(Routes.LOGIN) {
+            composable(Routes.LOGIN) { entry ->
+                val prefillEmail by entry.savedStateHandle.getStateFlow<String?>("prefill_email", null).collectAsState()
                 LoginScreen(
                     repository = repository,
                     onLoggedIn = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
                     onGoToRegister = { navController.navigate(Routes.REGISTER) },
                     onGoToSetup = { navController.navigate(Routes.SETUP) },
+                    onGoToVerifyEmail = { navController.navigate(Routes.VERIFY_EMAIL) },
+                    prefillEmail = prefillEmail,
                 )
             }
             composable(Routes.REGISTER) {
                 RegisterOrgScreen(
                     repository = repository,
+                    onBackToLogin = { email ->
+                        if (!email.isNullOrBlank()) {
+                            navController.previousBackStackEntry?.savedStateHandle?.set("prefill_email", email)
+                        }
+                        navController.popBackStack()
+                    },
+                )
+            }
+            composable(Routes.VERIFY_EMAIL) {
+                VerifyEmailScreen(
+                    repository = repository,
+                    onVerified = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
                     onBackToLogin = { navController.popBackStack() },
                 )
             }
