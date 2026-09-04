@@ -14,8 +14,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -28,6 +31,7 @@ import com.amlkit.mobile.data.dto.UboIn
 import com.amlkit.mobile.ui.common.CountryAutocomplete
 import com.amlkit.mobile.ui.common.ErrorBanner
 import com.amlkit.mobile.ui.common.PillButton
+import com.amlkit.mobile.ui.common.PillButtonTone
 import com.amlkit.mobile.ui.common.ScreenTitle
 import com.amlkit.mobile.ui.common.amlkitViewModel
 import com.amlkit.mobile.ui.common.screenContentPadding
@@ -44,12 +48,25 @@ data class CustomerNewUiState(
     val fullName: String = "",
     val customerType: String = "natural",
     val nationality: String = "",
+    val birthDate: String = "",
     val sector: String = "other",
     val ubos: List<DraftUbo> = emptyList(),
     val loading: Boolean = false,
     val error: String? = null,
     val blockedWarning: String? = null,
 )
+
+/** Fields a document scan can hand back to prefill this form with -- a
+ * subset of what's extracted, limited to what [CustomerCreateRequest]
+ * actually has a slot for (it has no id_number field at all, so a scanned
+ * ID number/expiry is shown on the scan screen itself but not carried
+ * over here). */
+data class ScanPrefill(val fullName: String?, val nationality: String?, val birthDate: String?)
+
+/** Loose enough to accept a real calendar date without a full parse --
+ * good enough to reject an obviously wrong format (e.g. "04/09/2026")
+ * typed by hand before it reaches the server as a raw string. */
+private val ISO_DATE_PATTERN = Regex("^\\d{4}-\\d{2}-\\d{2}$")
 
 class CustomerNewViewModel(private val repository: AmlkitRepository) : ViewModel() {
     private val _state = MutableStateFlow(CustomerNewUiState())
@@ -59,7 +76,17 @@ class CustomerNewViewModel(private val repository: AmlkitRepository) : ViewModel
     fun onFullNameChange(v: String) { _state.value = _state.value.copy(fullName = v) }
     fun onCustomerTypeChange(v: String) { _state.value = _state.value.copy(customerType = v) }
     fun onNationalityChange(v: String) { _state.value = _state.value.copy(nationality = v) }
+    fun onBirthDateChange(v: String) { _state.value = _state.value.copy(birthDate = v) }
     fun onSectorChange(v: String) { _state.value = _state.value.copy(sector = v) }
+
+    fun applyScanPrefill(prefill: ScanPrefill) {
+        val s = _state.value
+        _state.value = s.copy(
+            fullName = prefill.fullName?.takeIf { it.isNotBlank() } ?: s.fullName,
+            nationality = prefill.nationality?.takeIf { it.isNotBlank() } ?: s.nationality,
+            birthDate = prefill.birthDate?.takeIf { it.isNotBlank() } ?: s.birthDate,
+        )
+    }
 
     fun addUbo() { _state.value = _state.value.copy(ubos = _state.value.ubos + DraftUbo()) }
     fun removeUbo(index: Int) {
@@ -75,6 +102,10 @@ class CustomerNewViewModel(private val repository: AmlkitRepository) : ViewModel
             _state.value = s.copy(error = "Reference and full name are required.")
             return
         }
+        if (s.birthDate.isNotBlank() && !ISO_DATE_PATTERN.matches(s.birthDate.trim())) {
+            _state.value = s.copy(error = "Date of birth must be in YYYY-MM-DD format.")
+            return
+        }
         _state.value = s.copy(loading = true, error = null)
         viewModelScope.launch {
             val body = CustomerCreateRequest(
@@ -82,6 +113,7 @@ class CustomerNewViewModel(private val repository: AmlkitRepository) : ViewModel
                 full_name = s.fullName.trim(),
                 customer_type = s.customerType,
                 nationality = s.nationality.trim(),
+                birth_date = s.birthDate.trim(),
                 sector = s.sector,
                 ubos = s.ubos.filter { it.personName.isNotBlank() }.map {
                     UboIn(it.personName.trim(), it.ownershipPct.toDoubleOrNull(), it.controlType)
@@ -104,9 +136,30 @@ class CustomerNewViewModel(private val repository: AmlkitRepository) : ViewModel
 }
 
 @Composable
-fun CustomerNewScreen(repository: AmlkitRepository, onCreated: (Int) -> Unit) {
+fun CustomerNewScreen(
+    repository: AmlkitRepository,
+    onCreated: (Int) -> Unit,
+    scanPrefill: ScanPrefill? = null,
+    onScanPrefillConsumed: () -> Unit = {},
+    onScanPassport: () -> Unit = {},
+    onScanEmiratesId: () -> Unit = {},
+) {
     val viewModel = amlkitViewModel(repository) { CustomerNewViewModel(it) }
     val state by viewModel.state.collectAsState()
+
+    // onScanPrefillConsumed clears its three SavedStateHandle keys one at a
+    // time, each of which is itself an observed state change -- without this
+    // guard, every intermediate partial-null combination would re-trigger
+    // this effect and reapply an already-consumed (and possibly since
+    // hand-edited) prefill.
+    var scanPrefillConsumed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(scanPrefill) {
+        if (scanPrefill != null && !scanPrefillConsumed) {
+            scanPrefillConsumed = true
+            viewModel.applyScanPrefill(scanPrefill)
+            onScanPrefillConsumed()
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -116,6 +169,18 @@ fun CustomerNewScreen(repository: AmlkitRepository, onCreated: (Int) -> Unit) {
         item { ScreenTitle(text = "Onboard a customer") }
         if (state.error != null) {
             item { ErrorBanner(message = state.error!!) }
+        }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton(
+                    text = "Scan passport", tone = PillButtonTone.SECONDARY,
+                    onClick = onScanPassport, modifier = Modifier.weight(1f),
+                )
+                PillButton(
+                    text = "Scan Emirates ID", tone = PillButtonTone.SECONDARY,
+                    onClick = onScanEmiratesId, modifier = Modifier.weight(1f),
+                )
+            }
         }
         item {
             OutlinedTextField(
@@ -143,6 +208,12 @@ fun CustomerNewScreen(repository: AmlkitRepository, onCreated: (Int) -> Unit) {
                     modifier = fieldModifier.fillMaxWidth(),
                 )
             }
+        }
+        item {
+            OutlinedTextField(
+                value = state.birthDate, onValueChange = viewModel::onBirthDateChange,
+                label = { Text("Date of birth (optional, YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            )
         }
         item {
             OutlinedTextField(

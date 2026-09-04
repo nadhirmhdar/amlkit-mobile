@@ -56,6 +56,11 @@ data class RegisterOrgUiState(
     val registeredEmail: String? = null,
     val resendInFlight: Boolean = false,
     val resendMessage: String? = null,
+    // Set when registration failed specifically because the email is
+    // already registered (see api_register_organization's operators.email
+    // UNIQUE-constraint branch on the server) -- lets the screen offer a
+    // direct path to sign-in instead of a dead-end error.
+    val duplicateEmail: Boolean = false,
 )
 
 class RegisterOrgViewModel(private val repository: AmlkitRepository) : ViewModel() {
@@ -81,13 +86,17 @@ class RegisterOrgViewModel(private val repository: AmlkitRepository) : ViewModel
             _state.value = s.copy(error = "Password must be at least 10 characters.")
             return
         }
-        _state.value = s.copy(loading = true, error = null)
+        _state.value = s.copy(loading = true, error = null, duplicateEmail = false)
         viewModelScope.launch {
             when (val result = repository.registerOrganization(s.orgName.trim(), s.name.trim(), s.email.trim(), s.password)) {
                 is ApiResult.Success -> {
                     _state.value = _state.value.copy(loading = false, registeredEmail = result.data.email)
                 }
-                is ApiResult.Failure -> _state.value = _state.value.copy(loading = false, error = result.message)
+                is ApiResult.Failure -> {
+                    val duplicate = result.message.contains("already exists", ignoreCase = true) &&
+                        result.message.contains("email", ignoreCase = true)
+                    _state.value = _state.value.copy(loading = false, error = result.message, duplicateEmail = duplicate)
+                }
             }
         }
     }
@@ -114,7 +123,7 @@ private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 @Composable
 fun RegisterOrgScreen(
     repository: AmlkitRepository,
-    onBackToLogin: () -> Unit,
+    onBackToLogin: (email: String?) -> Unit,
 ) {
     val viewModel = amlkitViewModel(repository) { RegisterOrgViewModel(it) }
     val state by viewModel.state.collectAsState()
@@ -126,7 +135,7 @@ fun RegisterOrgScreen(
             resendInFlight = state.resendInFlight,
             resendMessage = state.resendMessage,
             onResend = viewModel::resend,
-            onBackToLogin = onBackToLogin,
+            onBackToLogin = { onBackToLogin(null) },
         )
         return
     }
@@ -148,6 +157,13 @@ fun RegisterOrgScreen(
 
         if (state.error != null) {
             ErrorBanner(message = state.error!!, modifier = Modifier.padding(bottom = 12.dp))
+        }
+        if (state.duplicateEmail) {
+            PillButton(
+                text = "Sign in instead",
+                onClick = { onBackToLogin(state.email.trim()) },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            )
         }
 
         OutlinedTextField(
@@ -191,7 +207,7 @@ fun RegisterOrgScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        TextLink(text = "Already have an account? Sign in", onClick = onBackToLogin, modifier = Modifier.padding(top = 16.dp))
+        TextLink(text = "Already have an account? Sign in", onClick = { onBackToLogin(null) }, modifier = Modifier.padding(top = 16.dp))
     }
 }
 

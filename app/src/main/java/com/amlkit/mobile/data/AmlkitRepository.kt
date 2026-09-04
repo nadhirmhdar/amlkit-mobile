@@ -15,6 +15,7 @@ import com.amlkit.mobile.data.dto.CustomerDetailResponse
 import com.amlkit.mobile.data.dto.CustomersListResponse
 import com.amlkit.mobile.data.dto.DashboardResponse
 import com.amlkit.mobile.data.dto.DatasetsResponse
+import com.amlkit.mobile.data.dto.EmiratesIdScanResponse
 import com.amlkit.mobile.data.dto.LoginRequest
 import com.amlkit.mobile.data.dto.NoteRequest
 import com.amlkit.mobile.data.dto.NoteResponse
@@ -143,6 +144,13 @@ class AmlkitRepository(
             "passport_file", imageFile.name, imageFile.asRequestBody("image/*".toMediaTypeOrNull()),
         )
         return safeApiCall { api.scanPassport(part) }
+    }
+
+    suspend fun scanEmiratesId(imageFile: File): ApiResult<EmiratesIdScanResponse> {
+        val part = MultipartBody.Part.createFormData(
+            "emirates_id_file", imageFile.name, imageFile.asRequestBody("image/*".toMediaTypeOrNull()),
+        )
+        return safeApiCall { api.scanEmiratesId(part) }
     }
 
     suspend fun customerDetail(id: Int): ApiResult<CustomerDetailResponse> = safeApiCall { api.customerDetail(id) }

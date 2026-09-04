@@ -20,10 +20,12 @@ import com.amlkit.mobile.ui.audit.AuditScreen
 import com.amlkit.mobile.ui.auth.LoginScreen
 import com.amlkit.mobile.ui.auth.RegisterOrgScreen
 import com.amlkit.mobile.ui.auth.SetupScreen
+import com.amlkit.mobile.ui.auth.VerifyEmailScreen
 import com.amlkit.mobile.ui.customers.CustomerDetailScreen
 import com.amlkit.mobile.ui.customers.CustomerNewScreen
 import com.amlkit.mobile.ui.customers.CustomersListScreen
 import com.amlkit.mobile.ui.customers.EvidenceScreen
+import com.amlkit.mobile.ui.customers.ScanPrefill
 import com.amlkit.mobile.ui.dashboard.DashboardScreen
 import com.amlkit.mobile.ui.home.AboutScreen
 import com.amlkit.mobile.ui.home.HomeScreen
@@ -31,6 +33,8 @@ import com.amlkit.mobile.ui.more.MoreScreen
 import com.amlkit.mobile.ui.reports.ReportBuilderScreen
 import com.amlkit.mobile.ui.reports.ReportDetailScreen
 import com.amlkit.mobile.ui.reports.ReportsListScreen
+import com.amlkit.mobile.ui.scan.DocType
+import com.amlkit.mobile.ui.scan.DocumentScanScreen
 import com.amlkit.mobile.ui.screening.ScreeningScreen
 import kotlinx.coroutines.launch
 
@@ -44,6 +48,7 @@ private val screenTitles = mapOf(
     Routes.REPORT_NEW to "Reports",
     Routes.REPORT_DETAIL to "Reports",
     Routes.ABOUT to "Home",
+    Routes.DOCUMENT_SCAN to "Customers",
 )
 
 @Composable
@@ -54,8 +59,10 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
+    val preAuthRoutes = setOf(Routes.LOGIN, Routes.REGISTER, Routes.SETUP, Routes.VERIFY_EMAIL)
+
     LaunchedEffect(token) {
-        if (token == null && currentRoute != Routes.LOGIN && currentRoute != Routes.REGISTER && currentRoute != Routes.SETUP) {
+        if (token == null && currentRoute !in preAuthRoutes) {
             navController.navigate(Routes.LOGIN) {
                 popUpTo(0) { inclusive = true }
                 launchSingleTop = true
@@ -64,7 +71,7 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
     }
 
     val isTopLevel = currentRoute in bottomTabRoutes
-    val isAuthRoute = currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER || currentRoute == Routes.SETUP
+    val isAuthRoute = currentRoute in preAuthRoutes
     // Alerts renders its own header (queue vs. detail need different back
     // targets within the same route), so the shared Scaffold header is
     // suppressed for it rather than doubling up.
@@ -98,17 +105,32 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
             startDestination = if (token != null) Routes.HOME else Routes.LOGIN,
             modifier = Modifier.padding(padding),
         ) {
-            composable(Routes.LOGIN) {
+            composable(Routes.LOGIN) { entry ->
+                val prefillEmail by entry.savedStateHandle.getStateFlow<String?>("prefill_email", null).collectAsState()
                 LoginScreen(
                     repository = repository,
                     onLoggedIn = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
                     onGoToRegister = { navController.navigate(Routes.REGISTER) },
                     onGoToSetup = { navController.navigate(Routes.SETUP) },
+                    onGoToVerifyEmail = { navController.navigate(Routes.VERIFY_EMAIL) },
+                    prefillEmail = prefillEmail,
                 )
             }
             composable(Routes.REGISTER) {
                 RegisterOrgScreen(
                     repository = repository,
+                    onBackToLogin = { email ->
+                        if (!email.isNullOrBlank()) {
+                            navController.previousBackStackEntry?.savedStateHandle?.set("prefill_email", email)
+                        }
+                        navController.popBackStack()
+                    },
+                )
+            }
+            composable(Routes.VERIFY_EMAIL) {
+                VerifyEmailScreen(
+                    repository = repository,
+                    onVerified = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
                     onBackToLogin = { navController.popBackStack() },
                 )
             }
@@ -142,10 +164,47 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
                     onNewCustomer = { navController.navigate(Routes.CUSTOMER_NEW) },
                 )
             }
-            composable(Routes.CUSTOMER_NEW) {
-                CustomerNewScreen(repository = repository, onCreated = { id ->
-                    navController.navigate(Routes.customerDetail(id)) { popUpTo(Routes.CUSTOMERS) }
-                })
+            composable(Routes.CUSTOMER_NEW) { entry ->
+                val prefillName by entry.savedStateHandle.getStateFlow<String?>("scan_full_name", null).collectAsState()
+                val prefillNationality by entry.savedStateHandle.getStateFlow<String?>("scan_nationality", null).collectAsState()
+                val prefillBirthDate by entry.savedStateHandle.getStateFlow<String?>("scan_birth_date", null).collectAsState()
+                val scanPrefill = if (prefillName != null || prefillNationality != null || prefillBirthDate != null) {
+                    ScanPrefill(prefillName, prefillNationality, prefillBirthDate)
+                } else {
+                    null
+                }
+                CustomerNewScreen(
+                    repository = repository,
+                    onCreated = { id ->
+                        navController.navigate(Routes.customerDetail(id)) { popUpTo(Routes.CUSTOMERS) }
+                    },
+                    scanPrefill = scanPrefill,
+                    onScanPrefillConsumed = {
+                        entry.savedStateHandle["scan_full_name"] = null
+                        entry.savedStateHandle["scan_nationality"] = null
+                        entry.savedStateHandle["scan_birth_date"] = null
+                    },
+                    onScanPassport = { navController.navigate(Routes.documentScan(DocType.PASSPORT.routeArg)) },
+                    onScanEmiratesId = { navController.navigate(Routes.documentScan(DocType.EMIRATES_ID.routeArg)) },
+                )
+            }
+            composable(
+                route = Routes.DOCUMENT_SCAN,
+                arguments = listOf(androidx.navigation.navArgument("docType") { type = androidx.navigation.NavType.StringType }),
+            ) { entry ->
+                val docType = DocType.fromRouteArg(entry.arguments?.getString("docType"))
+                DocumentScanScreen(
+                    repository = repository,
+                    docType = docType,
+                    onUseData = { result ->
+                        navController.previousBackStackEntry?.savedStateHandle?.apply {
+                            set("scan_full_name", result.fullName)
+                            set("scan_nationality", result.nationality)
+                            set("scan_birth_date", result.birthDate)
+                        }
+                        navController.popBackStack()
+                    },
+                )
             }
             composable(
                 route = Routes.CUSTOMER_DETAIL,

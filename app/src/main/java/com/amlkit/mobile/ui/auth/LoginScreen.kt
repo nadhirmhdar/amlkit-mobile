@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,9 +112,15 @@ fun LoginScreen(
     onLoggedIn: () -> Unit,
     onGoToRegister: () -> Unit,
     onGoToSetup: () -> Unit,
+    onGoToVerifyEmail: () -> Unit = {},
+    prefillEmail: String? = null,
 ) {
     val viewModel = amlkitViewModel(repository) { LoginViewModel(it) }
     val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(prefillEmail) {
+        if (!prefillEmail.isNullOrBlank()) viewModel.onEmailChange(prefillEmail)
+    }
 
     Column(
         modifier = Modifier
@@ -192,6 +199,11 @@ fun LoginScreen(
             TextLink(
                 text = "Have a setup code?",
                 onClick = onGoToSetup,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            TextLink(
+                text = "Have a verification link or code?",
+                onClick = onGoToVerifyEmail,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }

@@ -4,12 +4,14 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val SETUP = "setup"
+    const val VERIFY_EMAIL = "verify-email"
     const val HOME = "home"
     const val DASHBOARD = "dashboard"
     const val SCREENING = "screening"
     const val CUSTOMERS = "customers"
     const val CUSTOMER_NEW = "customers/new"
     const val CUSTOMER_DETAIL = "customers/{customerId}"
+    const val DOCUMENT_SCAN = "scan/{docType}"
     const val ALERTS = "alerts"
     const val AUDIT = "audit"
     const val ADMIN = "admin"
@@ -21,4 +23,5 @@ object Routes {
 
     fun customerDetail(customerId: Int) = "customers/$customerId"
     fun reportDetail(reportId: Int) = "reports/$reportId"
+    fun documentScan(docType: String) = "scan/$docType"
 }

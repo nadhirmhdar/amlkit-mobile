@@ -14,6 +14,7 @@ import com.amlkit.mobile.data.dto.CustomerDetailResponse
 import com.amlkit.mobile.data.dto.CustomersListResponse
 import com.amlkit.mobile.data.dto.DashboardResponse
 import com.amlkit.mobile.data.dto.DatasetsResponse
+import com.amlkit.mobile.data.dto.EmiratesIdScanResponse
 import com.amlkit.mobile.data.dto.LoginRequest
 import com.amlkit.mobile.data.dto.MeResponse
 import com.amlkit.mobile.data.dto.MessageResponse
@@ -113,6 +114,10 @@ interface AmlkitApi {
     @Multipart
     @POST("api/v1/customers/scan-passport")
     suspend fun scanPassport(@Part file: MultipartBody.Part): Response<PassportScanResponse>
+
+    @Multipart
+    @POST("api/v1/customers/scan-emirates-id")
+    suspend fun scanEmiratesId(@Part file: MultipartBody.Part): Response<EmiratesIdScanResponse>
 
     @GET("api/v1/customers/{id}")
     suspend fun customerDetail(@Path("id") id: Int): Response<CustomerDetailResponse>

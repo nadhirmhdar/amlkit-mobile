@@ -38,6 +38,21 @@
             </intent-filter>
         </activity>
 
+        <!-- Needed so the direct-camera-capture path (ActivityResultContracts.
+             TakePicture) has a content:// URI to write the photo into:
+             the camera app can't write straight to a plain file:// path
+             outside its own storage. Gallery pick doesn't need this: the
+             system photo picker already returns a content:// URI. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>
