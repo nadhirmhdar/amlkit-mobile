@@ -60,7 +60,11 @@ class RegisterOrgViewModel(private val repository: AmlkitRepository) : ViewModel
     fun onEmailChange(v: String) { _state.value = _state.value.copy(email = v, error = null) }
     fun onPasswordChange(v: String) { _state.value = _state.value.copy(password = v, error = null) }
 
-    fun register(onSuccess: () -> Unit) {
+    /** [onNeedsVerification] fires once the account is created -- it is not
+     * usable yet, since the server requires the emailed link to be verified
+     * before a session can be issued (see AmlkitRepository.registerOrganization,
+     * which no longer receives a token back here). */
+    fun register(onNeedsVerification: (email: String, devToken: String?) -> Unit) {
         val s = _state.value
         if (s.orgName.isBlank() || s.name.isBlank() || s.email.isBlank()) {
             _state.value = s.copy(error = "All fields are required.")
@@ -79,7 +83,7 @@ class RegisterOrgViewModel(private val repository: AmlkitRepository) : ViewModel
             when (val result = repository.registerOrganization(s.orgName.trim(), s.name.trim(), s.email.trim(), s.password)) {
                 is ApiResult.Success -> {
                     _state.value = _state.value.copy(loading = false)
-                    onSuccess()
+                    onNeedsVerification(result.data.email, result.data.dev_verification_token)
                 }
                 is ApiResult.Failure -> _state.value = _state.value.copy(loading = false, error = result.message)
             }
@@ -95,7 +99,7 @@ private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 @Composable
 fun RegisterOrgScreen(
     repository: AmlkitRepository,
-    onRegistered: () -> Unit,
+    onNeedsVerification: (email: String, devToken: String?) -> Unit,
     onBackToLogin: () -> Unit,
 ) {
     val viewModel = amlkitViewModel(repository) { RegisterOrgViewModel(it) }
@@ -156,7 +160,7 @@ fun RegisterOrgScreen(
 
         PillButton(
             text = "Register",
-            onClick = { viewModel.register(onRegistered) },
+            onClick = { viewModel.register(onNeedsVerification) },
             enabled = !state.loading,
             loading = state.loading,
             modifier = Modifier.fillMaxWidth(),

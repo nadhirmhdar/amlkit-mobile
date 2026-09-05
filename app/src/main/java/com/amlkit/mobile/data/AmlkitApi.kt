@@ -26,10 +26,13 @@ import com.amlkit.mobile.data.dto.PasswordResetRequest
 import com.amlkit.mobile.data.dto.ReasonCodesResponse
 import com.amlkit.mobile.data.dto.RefreshResultDto
 import com.amlkit.mobile.data.dto.RegisterOrgRequest
+import com.amlkit.mobile.data.dto.RegisterOrgResponse
 import com.amlkit.mobile.data.dto.ReportDetailResponse
 import com.amlkit.mobile.data.dto.ReportSaveRequest
 import com.amlkit.mobile.data.dto.ReportSaveResponse
 import com.amlkit.mobile.data.dto.ReportsResponse
+import com.amlkit.mobile.data.dto.ResendVerificationRequest
+import com.amlkit.mobile.data.dto.ResendVerificationResponse
 import com.amlkit.mobile.data.dto.ReviewOutcomeDto
 import com.amlkit.mobile.data.dto.ScreenRequest
 import com.amlkit.mobile.data.dto.ScreenResponse
@@ -39,6 +42,7 @@ import com.amlkit.mobile.data.dto.SignatureRequest
 import com.amlkit.mobile.data.dto.SignatureResponse
 import com.amlkit.mobile.data.dto.ThresholdRequest
 import com.amlkit.mobile.data.dto.ThresholdResponse
+import com.amlkit.mobile.data.dto.VerifyEmailRequest
 import com.amlkit.mobile.data.dto.TransactionRequest
 import com.amlkit.mobile.data.dto.TransactionResponse
 import com.amlkit.mobile.data.dto.TxnAlertDispositionRequest
@@ -71,7 +75,13 @@ interface AmlkitApi {
     suspend fun me(): Response<MeResponse>
 
     @POST("api/v1/auth/register-organization")
-    suspend fun registerOrganization(@Body body: RegisterOrgRequest): Response<AuthResponse>
+    suspend fun registerOrganization(@Body body: RegisterOrgRequest): Response<RegisterOrgResponse>
+
+    @POST("api/v1/auth/verify-email")
+    suspend fun verifyEmail(@Body body: VerifyEmailRequest): Response<AuthResponse>
+
+    @POST("api/v1/auth/resend-verification")
+    suspend fun resendVerification(@Body body: ResendVerificationRequest): Response<ResendVerificationResponse>
 
     @GET("api/v1/auth/setup")
     suspend fun setupCheck(@Query("token") token: String): Response<SetupCheckResponse>

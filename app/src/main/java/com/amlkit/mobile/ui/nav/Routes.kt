@@ -4,6 +4,7 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val SETUP = "setup"
+    const val VERIFY_EMAIL = "verify-email/{email}?token={token}"
     const val HOME = "home"
     const val DASHBOARD = "dashboard"
     const val SCREENING = "screening"
@@ -21,4 +22,10 @@ object Routes {
 
     fun customerDetail(customerId: Int) = "customers/$customerId"
     fun reportDetail(reportId: Int) = "reports/$reportId"
+
+    fun verifyEmail(email: String, devToken: String? = null): String {
+        val encodedEmail = java.net.URLEncoder.encode(email, "UTF-8")
+        val encodedToken = java.net.URLEncoder.encode(devToken ?: "", "UTF-8")
+        return "verify-email/$encodedEmail?token=$encodedToken"
+    }
 }

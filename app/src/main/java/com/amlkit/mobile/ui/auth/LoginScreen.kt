@@ -87,6 +87,7 @@ fun LoginScreen(
     onLoggedIn: () -> Unit,
     onGoToRegister: () -> Unit,
     onGoToSetup: () -> Unit,
+    onGoToVerify: () -> Unit,
 ) {
     val viewModel = amlkitViewModel(repository) { LoginViewModel(it) }
     val state by viewModel.state.collectAsState()
@@ -152,6 +153,11 @@ fun LoginScreen(
             TextLink(
                 text = "Have a setup code?",
                 onClick = onGoToSetup,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            TextLink(
+                text = "Need to verify your email?",
+                onClick = onGoToVerify,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }

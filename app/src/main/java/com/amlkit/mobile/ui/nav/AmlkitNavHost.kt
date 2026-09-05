@@ -20,6 +20,7 @@ import com.amlkit.mobile.ui.audit.AuditScreen
 import com.amlkit.mobile.ui.auth.LoginScreen
 import com.amlkit.mobile.ui.auth.RegisterOrgScreen
 import com.amlkit.mobile.ui.auth.SetupScreen
+import com.amlkit.mobile.ui.auth.VerifyEmailScreen
 import com.amlkit.mobile.ui.customers.CustomerDetailScreen
 import com.amlkit.mobile.ui.customers.CustomerNewScreen
 import com.amlkit.mobile.ui.customers.CustomersListScreen
@@ -54,8 +55,10 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
+    val authRoutes = setOf(Routes.LOGIN, Routes.REGISTER, Routes.SETUP, Routes.VERIFY_EMAIL)
+
     LaunchedEffect(token) {
-        if (token == null && currentRoute != Routes.LOGIN && currentRoute != Routes.REGISTER && currentRoute != Routes.SETUP) {
+        if (token == null && currentRoute !in authRoutes) {
             navController.navigate(Routes.LOGIN) {
                 popUpTo(0) { inclusive = true }
                 launchSingleTop = true
@@ -64,7 +67,7 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
     }
 
     val isTopLevel = currentRoute in bottomTabRoutes
-    val isAuthRoute = currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER || currentRoute == Routes.SETUP
+    val isAuthRoute = currentRoute in authRoutes
     // Alerts renders its own header (queue vs. detail need different back
     // targets within the same route), so the shared Scaffold header is
     // suppressed for it rather than doubling up.
@@ -104,12 +107,15 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
                     onLoggedIn = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
                     onGoToRegister = { navController.navigate(Routes.REGISTER) },
                     onGoToSetup = { navController.navigate(Routes.SETUP) },
+                    onGoToVerify = { navController.navigate(Routes.verifyEmail(email = "")) },
                 )
             }
             composable(Routes.REGISTER) {
                 RegisterOrgScreen(
                     repository = repository,
-                    onRegistered = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
+                    onNeedsVerification = { email, devToken ->
+                        navController.navigate(Routes.verifyEmail(email, devToken)) { popUpTo(Routes.LOGIN) }
+                    },
                     onBackToLogin = { navController.popBackStack() },
                 )
             }
@@ -118,6 +124,26 @@ fun AmlkitApp(repository: AmlkitRepository, tokenStore: AuthTokenStore) {
                     repository = repository,
                     onSetupComplete = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
                     onBackToLogin = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = Routes.VERIFY_EMAIL,
+                arguments = listOf(
+                    androidx.navigation.navArgument("email") { type = androidx.navigation.NavType.StringType },
+                    androidx.navigation.navArgument("token") {
+                        type = androidx.navigation.NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+            ) { entry ->
+                val rawEmail = entry.arguments?.getString("email") ?: ""
+                val rawToken = entry.arguments?.getString("token") ?: ""
+                VerifyEmailScreen(
+                    repository = repository,
+                    email = java.net.URLDecoder.decode(rawEmail, "UTF-8"),
+                    prefillToken = java.net.URLDecoder.decode(rawToken, "UTF-8").ifBlank { null },
+                    onVerified = { navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } } },
+                    onBackToLogin = { navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } } },
                 )
             }
             composable(Routes.HOME) {

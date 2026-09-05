@@ -26,10 +26,13 @@ import com.amlkit.mobile.data.dto.PasswordResetRequest
 import com.amlkit.mobile.data.dto.ReasonCodesResponse
 import com.amlkit.mobile.data.dto.RefreshResultDto
 import com.amlkit.mobile.data.dto.RegisterOrgRequest
+import com.amlkit.mobile.data.dto.RegisterOrgResponse
 import com.amlkit.mobile.data.dto.ReportDetailResponse
 import com.amlkit.mobile.data.dto.ReportSaveRequest
 import com.amlkit.mobile.data.dto.ReportSaveResponse
 import com.amlkit.mobile.data.dto.ReportsResponse
+import com.amlkit.mobile.data.dto.ResendVerificationRequest
+import com.amlkit.mobile.data.dto.ResendVerificationResponse
 import com.amlkit.mobile.data.dto.ReviewOutcomeDto
 import com.amlkit.mobile.data.dto.ScreenRequest
 import com.amlkit.mobile.data.dto.ScreenResponse
@@ -44,6 +47,7 @@ import com.amlkit.mobile.data.dto.TransactionResponse
 import com.amlkit.mobile.data.dto.TxnAlertDispositionRequest
 import com.amlkit.mobile.data.dto.UboAddRequest
 import com.amlkit.mobile.data.dto.UboAddResponse
+import com.amlkit.mobile.data.dto.VerifyEmailRequest
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -91,9 +95,15 @@ class AmlkitRepository(
         safeApiCall { api.login(LoginRequest(email, password)) }
             .also { if (it is ApiResult.Success) persistSession(it.data) }
 
-    suspend fun registerOrganization(orgName: String, name: String, email: String, password: String): ApiResult<AuthResponse> =
+    suspend fun registerOrganization(orgName: String, name: String, email: String, password: String): ApiResult<RegisterOrgResponse> =
         safeApiCall { api.registerOrganization(RegisterOrgRequest(orgName, name, email, password)) }
+
+    suspend fun verifyEmail(token: String): ApiResult<AuthResponse> =
+        safeApiCall { api.verifyEmail(VerifyEmailRequest(token)) }
             .also { if (it is ApiResult.Success) persistSession(it.data) }
+
+    suspend fun resendVerification(email: String): ApiResult<ResendVerificationResponse> =
+        safeApiCall { api.resendVerification(ResendVerificationRequest(email)) }
 
     suspend fun logout(): ApiResult<OkResponse> {
         val result = safeApiCall { api.logout() }

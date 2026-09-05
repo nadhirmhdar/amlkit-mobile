@@ -28,6 +28,27 @@ data class RegisterOrgRequest(
     val password: String,
 )
 
+/** What `register-organization` actually returns: the account is created but
+ * not yet usable -- no session token until the emailed link is verified. */
+@Serializable
+data class RegisterOrgResponse(
+    val status: String,
+    val message: String,
+    val email: String,
+    val dev_verification_token: String? = null,
+)
+
+@Serializable
+data class VerifyEmailRequest(val token: String)
+
+@Serializable
+data class ResendVerificationRequest(val email: String)
+
+/** Body of every resend-verification response -- always the same generic
+ * message regardless of whether the email exists, by server design. */
+@Serializable
+data class ResendVerificationResponse(val message: String)
+
 @Serializable
 data class SetupCheckResponse(val valid: Boolean, val org_name: String? = null)
 
